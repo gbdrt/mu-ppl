@@ -116,7 +116,7 @@ class MCMC(Handler):
         def _mh(old_trace, old_score, new_trace, new_score):  # MH acceptance prob
             fw = -np.log(len(old_trace))
             bw = -np.log(len(new_trace))
-            return min(1.0, np.exp(new_score - old_score + bw - fw))
+            return min(1.0, np.exp(np.float128(new_score - old_score + bw - fw)))
 
         samples = []
         new_value = model(*args, **kwargs)  # Generate first trace
