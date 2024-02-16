@@ -15,13 +15,13 @@ with inference.BasicSampler():
     print(coin([0, 1]))
 
 with inference.RejectionSampling(num_samples=10):
-    samples = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
-    print(np.mean(samples), np.std(samples))
+    dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+    print(dist.stats())
 
 with inference.ImportanceSampling(num_particles=1000):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
     print(dist.stats())
 
-with inference.ImportanceSamplingVect(num_particles=10000):
+with inference.MCMC(num_samples=1000):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
     print(dist.stats())
