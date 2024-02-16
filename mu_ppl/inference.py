@@ -2,6 +2,7 @@ import numpy as np
 from .distributions import Discrete, Empirical
 from abc import ABC
 from copy import deepcopy
+from tqdm import tqdm
 
 """
 Handler based inference à la Pyro
@@ -49,7 +50,7 @@ class Reject(Exception):
 
 
 class RejectionSampling(Handler):
-    def __init__(self, num_samples):
+    def __init__(self, num_samples=1000):
         self.num_samples = num_samples
 
     def sample(self, dist):
@@ -68,11 +69,12 @@ class RejectionSampling(Handler):
                 except Reject:
                     pass
 
-        return Empirical([gen() for _ in range(self.num_samples)])
+        samples = [gen() for _ in tqdm(range(self.num_samples))]
+        return Empirical(samples)
 
 
 class ImportanceSampling(Handler):
-    def __init__(self, num_particles=100):
+    def __init__(self, num_particles=1000):
         self.num_particles = num_particles
         self.id = 0
         self.scores = np.zeros(num_particles)
@@ -85,15 +87,16 @@ class ImportanceSampling(Handler):
 
     def infer(self, model, *args, **kwargs):
         values = [None for _ in range(self.num_particles)]
-        for i in range(self.num_particles):  # Run num_particles executions
+        for i in tqdm(range(self.num_particles)):  # Run num_particles executions
             self.id = i
             values[i] = model(*args, **kwargs)
         return Discrete(values, self.scores)
 
 
 class MCMC(Handler):
-    def __init__(self, num_samples=100):
+    def __init__(self, num_samples=1000, warmups=0):
         self.num_samples = num_samples
+        self.warmups = warmups
         self.score = 0
         self.trace = []
         self.tape = []
@@ -118,7 +121,7 @@ class MCMC(Handler):
         samples = []
         new_value = model(*args, **kwargs)  # Generate first trace
 
-        for _ in range(self.num_samples):
+        for _ in tqdm(range(self.warmups + self.num_samples)):
             samples.append(new_value)  # Store current sample
             old_score, old_trace = self.score, self.trace  # Store current state
             old_value = new_value  # Store current value
@@ -135,7 +138,7 @@ class MCMC(Handler):
                 new_value = old_value  # Roll back to the previous value
                 self.score, self.trace = old_score, old_trace  # Restore previous state
 
-        return Empirical(samples)
+        return Empirical(samples[self.warmups:])
 
 
 class SSM(ABC):
