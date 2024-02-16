@@ -1,5 +1,7 @@
 import numpy as np
 import numpy.random as rand
+from scipy.special import logsumexp
+import scipy.stats as stats
 from abc import ABC
 
 
@@ -21,11 +23,11 @@ class Bernoulli(Distribution):
     def sample(self, *args, **kwargs):
         return rand.binomial(1, self.p, *args, **kwargs)
 
-    def log_prob(self, v):
-        return v * np.log(self.p) + (1 - v) * np.log(1 - self.p)
-
+    def log_prob(self, x):
+        return stats.bernoulli.logpmf(x, self.p)
+    
     def stats(self):
-        return (self.p, self.p * self.q)
+        return stats.bernoulli.logpmf(self.p)
 
 
 class Uniform(Distribution):
@@ -40,7 +42,7 @@ class Uniform(Distribution):
         return 1.0
 
     def stats(self):
-        return ((self.b - self.a) / 2, np.sqrt((self.b - self.a) ** 2 / 12))
+        return stats.uniform.stats(self.a, self.b)
 
 
 class Gaussian(Distribution):
@@ -51,26 +53,23 @@ class Gaussian(Distribution):
     def sample(self, *args, **kwargs):
         return rand.normal(self.mu, self.sigma, *args, **kwargs)
 
-    def log_prob(self, v):
-        return (
-            1
-            / (self.sigma * np.sqrt(2 * np.pi))
-            * np.exp(((v - self.mu) / self.sigma) ** 2 / 2)
-        )
+    def log_prob(self, x):
+        return stats.norm.logpdf(x, loc=self.mu, scale=self.sigma)
 
     def stats(self):
-        return (self.mu, self.sigma)
+        return stats.norm.stats(loc=self.mu, scale=self.sigma)
 
 
 class Discrete(Distribution):
     def __init__(self, values, logits):
         self.values = values
         self.logits = logits
-        lse = np.log(np.sum(np.exp(logits)))
+        lse = logsumexp(logits)
         self.probs = np.exp(logits - lse)
 
     def sample(self, *args, **kwargs):
-        i = rand.multinomial(1, self.probs, *args, **kwargs)
+        u = rand.rand()
+        i = np.searchsorted(np.cumsum(self.probs), u)
         return self.values[i]
 
     def log_prob(self, v):
