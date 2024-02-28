@@ -1,4 +1,14 @@
-from typing import TypeVar, Callable, ParamSpec, List, Generic, Iterator, Optional, Any, Protocol
+from typing import (
+    TypeVar,
+    Callable,
+    ParamSpec,
+    List,
+    Generic,
+    Iterator,
+    Any,
+    Dict,
+    Type,
+)
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -62,10 +72,10 @@ class RejectionSampling(Handler):
     def __init__(self, num_samples: int = 1000):
         self.num_samples = num_samples
 
-    def sample(self, name:str, dist: Distribution[T]) -> T:
+    def sample(self, name: str, dist: Distribution[T]) -> T:
         return dist.sample()  # Draw sample
 
-    def observe(self, name:str, dist: Distribution[T], v: T):
+    def observe(self, name: str, dist: Distribution[T], v: T):
         x = dist.sample()  # Draw a sample
         if x != v:
             raise Reject  # Reject if it's not the observation
@@ -88,12 +98,12 @@ class ImportanceSampling(Handler):
     def __init__(self, num_particles: int = 1000):
         self.num_particles = num_particles
         self.id = 0
-        self.scores = [0. for _ in range(num_particles)]
+        self.scores = [0.0 for _ in range(num_particles)]
 
-    def sample(self, name:str, dist: Distribution[T]) -> T:
+    def sample(self, name: str, dist: Distribution[T]) -> T:
         return dist.sample()  # Draw sample
 
-    def observe(self, name:str, dist: Distribution[T], v: T):
+    def observe(self, name: str, dist: Distribution[T], v: T):
         self.scores[self.id] += dist.log_prob(v)  # Update the score
 
     def infer(
@@ -112,17 +122,19 @@ class MCMC(Handler):
         self.warmups = warmups
         self.score = 0.0
         self.trace: List[Any] = []  # log all samples
-        self.tape: List[Any] = []  # reuse first samples
+        self.store: Dict[str, Any] = {}  # samples store
 
-    def sample(self, name:str, dist: Distribution[T]) -> T:
-        if self.tape:  # Reuse if possible otherwise draw a sample
-            v = self.tape.pop(0)
-        else:
-            v = dist.sample()
-        self.trace.append(v)  # Add to the trace
+    def sample(self, name: str, dist: Distribution[T]) -> T:
+        try:  # Reuse if possible
+            v = self.store[name]
+            self.score += dist.log_prob(v)
+        except KeyError:
+            v = dist.sample()  # Otherwise draw a sample
+            self.store[name] = v  # Store the sample
+        self.trace.append(v)
         return v
 
-    def observe(self, name:str, dist: Distribution[T], v: T):
+    def observe(self, name: str, dist: Distribution[T], v: T):
         self.score += dist.log_prob(v)  # Update the score
 
     def infer(
@@ -136,15 +148,15 @@ class MCMC(Handler):
         samples: List[T] = []
         new_value = model(*args, **kwargs)  # Generate first trace
 
-        for _ in tqdm(range(self.warmups + self.num_samples)):
+        for _ in tqdm(range(self.warmups + self.num_samples - 1)):
             samples.append(new_value)  # Store current sample
             old_score, old_trace = self.score, self.trace  # Store current state
             old_value = new_value  # Store current value
 
-            regen_from = np.random.randint(len(self.trace))
+            regen = list(self.store.keys())[np.random.randint(len(self.store))]
             self.score = 0
             self.trace = []
-            self.tape = self.trace[:regen_from]
+            del self.store[regen]
             new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
 
             if np.random.random() < _mh(old_trace, old_score, self.trace, self.score):
@@ -169,23 +181,23 @@ class SSM(ABC, Generic[P, T]):
 class SMC(ImportanceSampling):
     # Model must be expressed as a state machine (SSM).
     # Resample at each step
-    def resample(self):
-        d = Discrete(self.particles, self.scores)
-        self.particles = [  # Resample a new set of particles
+    def resample(self, particles: List[SSM[P, T]]) -> List[SSM[P, T]]:
+        d = Discrete(particles, self.scores)
+        return [
             deepcopy(d.sample()) for _ in range(self.num_particles)
-        ]
-        self.scores = np.zeros(self.num_particles)  # Reset the score
+        ]  # Resample a new set of particles
 
     def infer_stream(
-        self, ssm:SSM[P, T], *args: Iterator[P.args]
+        self, ssm: type[SSM[P, T]], *args: Iterator[P.args]
     ) -> Iterator[Discrete[T]]:
-        self.particles = [
-            ssm() for _ in range(self.num_particles) # type: ignore
+        particles: List[SSM[P, T]] = [
+            ssm() for _ in range(self.num_particles)
         ]  # Initialise the particles
         for y in zip(*args):  # At each step
             values: List[T] = []
             for i in range(self.num_particles):
                 self.id = i
-                values.append(self.particles[i].step(*y))  # Execute all the particles
+                values.append(particles[i].step(*y))  # Execute all the particles
             yield Discrete(values, self.scores)  # Return current distribution
-            self.resample()  # Resample the particles
+            particles = self.resample(particles)  # Resample the particles
+            self.scores = [0.0 for _ in range(self.num_particles)]  # Reset the score

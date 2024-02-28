@@ -124,3 +124,13 @@ class Empirical(Distribution[T]):
     def stats(self) -> Tuple[float, float]:
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
+
+
+def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
+    match dist:
+        case Discrete():
+            return [Discrete(list(values), dist.logits) for values in zip(*dist.values)]
+        case Empirical():
+            return [Empirical(list(samples)) for samples in zip(*dist.samples)]
+        case _:
+            raise RuntimeError("We can only split discrete or empirical distributions")
