@@ -1,97 +1,126 @@
+from typing import TypeVar, Generic, List, Tuple
+from abc import ABC, abstractmethod
+
 import numpy as np
 import numpy.random as rand
-from scipy.special import logsumexp
-import scipy.stats as stats
-from abc import ABC
+from scipy.special import logsumexp  # type: ignore
+import scipy.stats as stats  # type: ignore
 
 
-class Distribution(ABC):
-    def sample(self, *args, **kwargs):
+T = TypeVar("T")
+
+
+class Distribution(ABC, Generic[T]):
+    @abstractmethod
+    def sample(self) -> T:
         pass
 
-    def log_prob(self, x, *args, **kwargs):
+    @abstractmethod
+    def log_prob(self, x: T) -> float:
         pass
 
-    def stats(self):
+    @abstractmethod
+    def stats(self) -> Tuple[float, float]:
         pass
 
 
-class Bernoulli(Distribution):
-    def __init__(self, p):
+class Dirac(Distribution[T]):
+    def __init__(self, v: T):
+        self.v = v
+
+    def sample(self) -> T:
+        return self.v
+
+    def log_prob(self, x) -> float:
+        return 0.0 if x == self.v else -10e-10
+
+    def stats(self) -> Tuple[float, float]:
+        assert isinstance(self.v, float)
+        return (self.v, 0.0)
+
+
+class Bernoulli(Distribution[float]):
+    def __init__(self, p: float):
+        assert 0 <= p <= 1
         self.p = p
 
-    def sample(self, *args, **kwargs):
-        return rand.binomial(1, self.p, *args, **kwargs)
+    def sample(self) -> float:
+        return rand.binomial(1, self.p)
 
-    def log_prob(self, x):
+    def log_prob(self, x) -> float:
         return stats.bernoulli.logpmf(x, self.p)
-    
-    def stats(self):
-        return stats.bernoulli.logpmf(self.p)
+
+    def stats(self) -> Tuple[float, float]:
+        return stats.bernoulli.stats(self.p)
 
 
-class Uniform(Distribution):
+class Uniform(Distribution[float]):
     def __init__(self, a, b):
+        assert a <= b
         self.a = a
         self.b = b
 
-    def sample(self, *args, **kwargs):
-        return rand.uniform(self.a, self.b, *args, **kwargs)
+    def sample(self):
+        return rand.uniform(self.a, self.b)
 
-    def log_prob(self):
+    def log_prob(self, v: float) -> float:
         return 1.0
 
     def stats(self):
         return stats.uniform.stats(self.a, self.b)
 
 
-class Gaussian(Distribution):
-    def __init__(self, mu, sigma):
+class Gaussian(Distribution[float]):
+    def __init__(self, mu: float, sigma: float):
+        assert sigma > 0
         self.mu = mu
         self.sigma = sigma
 
-    def sample(self, *args, **kwargs):
-        return rand.normal(self.mu, self.sigma, *args, **kwargs)
+    def sample(self) -> float:
+        return rand.normal(self.mu, self.sigma)
 
-    def log_prob(self, x):
+    def log_prob(self, x: float) -> float:
         return stats.norm.logpdf(x, loc=self.mu, scale=self.sigma)
 
-    def stats(self):
+    def stats(self) -> Tuple[float, float]:
         return stats.norm.stats(loc=self.mu, scale=self.sigma)
 
 
-class Discrete(Distribution):
-    def __init__(self, values, logits):
+class Discrete(Distribution[T]):
+    def __init__(self, values: List[T], logits: List[float]):
+        assert len(values) == len(logits)
         self.values = values
         self.logits = logits
         lse = logsumexp(logits)
         self.probs = np.exp(logits - lse)
 
-    def sample(self, *args, **kwargs):
+    def sample(self) -> T:
         u = rand.rand()
         i = np.searchsorted(np.cumsum(self.probs), u)
         return self.values[i]
 
-    def log_prob(self, v):
+    def log_prob(self, v: T) -> float:
         i = self.values.index(v)
         return np.log(self.probs[i])
 
-    def stats(self):
-        mean = np.average(self.values, weights=self.probs)
-        std = np.sqrt(np.cov(self.values, aweights=self.probs))
+    def stats(self) -> Tuple[float, float]:
+        values = np.array(self.values)
+        mean = np.average(values, weights=self.probs).item()
+        std = np.sqrt(np.cov(values, aweights=self.probs)).item()
         return (mean, std)
 
 
-class Empirical(Distribution):
-    def __init__(self, samples):
+class Empirical(Distribution[T]):
+    def __init__(self, samples: List[T]):
         self.samples = samples
 
-    def sample(self):
+    def sample(self) -> T:
         i = rand.randint(len(self.samples))
         return self.samples[i]
 
-    def log_prob(self, v):
+    def log_prob(self, v: T) -> float:
         return 1 / len(self.samples) if v in self.samples else 0
 
-    def stats(self):
-        return (np.mean(self.samples), np.std(self.samples))
+    def stats(self) -> Tuple[float, float]:
+        samples = np.array(self.samples)
+        return (np.mean(samples), np.std(samples))

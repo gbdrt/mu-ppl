@@ -5,14 +5,13 @@ from mu_ppl.distributions import Uniform, Bernoulli
 
 
 def coin(obs):
-    p = sample(Uniform(0, 1))
-    for o in obs:
-        observe(Bernoulli(p), o)
+    p = sample("p", Uniform(0, 1))
+    for i, o in enumerate(obs):
+        observe(f"o_{i}", Bernoulli(p), o)
     return p
 
 
-with inference.BasicSampler():
-    print(coin([0, 1]))
+print(coin([0, 1]))
 
 with inference.RejectionSampling(num_samples=10):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
