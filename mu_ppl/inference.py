@@ -39,8 +39,8 @@ class Handler:
 
     def sample(self, name: str, dist: Distribution[T]) -> T:
         return dist.sample()  # Draw sample
-    
-    def assume(self, pred:bool):
+
+    def assume(self, pred: bool):
         pass
 
     def observe(self, name: str, dist: Distribution[T], value: T):
@@ -58,8 +58,10 @@ _HANDLER = Handler()
 def sample(name: str, dist: Distribution[T]) -> T:
     return _HANDLER.sample(name, dist)
 
+
 def assume(pred: bool):
     return _HANDLER.assume(pred)
+
 
 def observe(name: str, dist: Distribution[T], value: T):
     return _HANDLER.observe(name, dist, value)
@@ -82,7 +84,7 @@ class BasicSampling(Handler):
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
-        samples = [ model(*args, **kwargs) for _ in tqdm(range(self.num_samples))]
+        samples = [model(*args, **kwargs) for _ in tqdm(range(self.num_samples))]
         return Empirical(samples)
 
 
@@ -96,7 +98,7 @@ class RejectionSampling(Handler):
 
     def sample(self, name: str, dist: Distribution[T]) -> T:
         return dist.sample()  # Draw sample
-    
+
     def assume(self, pred: bool):
         if not pred:
             raise Reject

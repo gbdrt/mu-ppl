@@ -3,6 +3,7 @@ import mu_ppl.inference as inference
 from mu_ppl import infer, sample, assume, observe
 from mu_ppl.distributions import Uniform, Bernoulli
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def model():
@@ -12,11 +13,12 @@ def model():
     assume(d < 1)
     return (x, y)
 
+
 with inference.RejectionSampling(num_samples=1000):
     dist = infer(model)
     print(dist.samples[:10])
     x, y = list(zip(*dist.samples))
-    plt.scatter(x, y)
-    plt.axis('scaled')
+    sns.scatterplot(x=x, y=y)
+    # plt.axis('scaled')
     plt.show()
     # print(dist.samples)

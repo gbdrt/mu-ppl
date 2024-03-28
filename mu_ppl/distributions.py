@@ -6,7 +6,9 @@ import numpy.random as rand
 from scipy.special import logsumexp  # type: ignore
 import scipy.stats as stats  # type: ignore
 
-import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme()
 
 
 T = TypeVar("T")
@@ -54,9 +56,10 @@ class Bernoulli(Distribution[float]):
 
     def stats(self) -> Tuple[float, float]:
         return stats.bernoulli.stats(self.p)
-    
+
+
 class Binomial(Distribution[float]):
-    def __init__(self, n:int, p: float):
+    def __init__(self, n: int, p: float):
         assert n > 0
         assert 0 <= p <= 1
         self.n = n
@@ -73,7 +76,7 @@ class Binomial(Distribution[float]):
 
 
 class Uniform(Distribution[float]):
-    def __init__(self, a, b):
+    def __init__(self, a: float, b: float):
         assert a <= b
         self.a = a
         self.b = b
@@ -126,11 +129,9 @@ class Discrete(Distribution[T]):
         mean = np.average(values, weights=self.probs).item()
         std = np.sqrt(np.cov(values, aweights=self.probs)).item()
         return (mean, std)
-    
-    def plot(self):
-        idx = np.argsort(self.values)
-        plt.plot(np.array(self.values)[idx], np.array(self.probs[idx]))
-        plt.show()
+
+    def plot(self, **kwargs):
+        sns.lineplot(x=self.values, y=self.probs, **kwargs)
 
 
 class Empirical(Distribution[T]):
@@ -147,10 +148,9 @@ class Empirical(Distribution[T]):
     def stats(self) -> Tuple[float, float]:
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
-    
-    def hist(self):
-        bounds = np.min(self.samples), np.max(self.samples)
-        plt.hist(self.samples, range(*bounds))
+
+    def hist(self, *arg, **kwargs):
+        sns.histplot(self.samples, *arg, kde=True, stat="density", **kwargs)
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:

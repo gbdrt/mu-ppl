@@ -5,12 +5,13 @@ from mu_ppl.distributions import Empirical, Uniform, Bernoulli
 import matplotlib.pyplot as plt
 
 
-def plinko(n:int) -> float:
-    if (n==0): 
+def plinko(n: int) -> float:
+    if n == 0:
         return 0
     else:
         x = sample("x", Bernoulli(0.5))
-        return x + plinko(n-1)
+        return x + plinko(n - 1)
+
 
 with inference.BasicSampling(num_samples=1000):
     dist = infer(plinko, 100)
