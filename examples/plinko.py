@@ -14,6 +14,6 @@ def plinko(n:int) -> float:
 
 with inference.BasicSampling(num_samples=1000):
     dist = infer(plinko, 100)
-    plt.hist(dist.samples, range=(0, 100), bins=100, color='b')
+    dist.hist()
     plt.show()
     # print(dist.samples)

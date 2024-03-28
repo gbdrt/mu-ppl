@@ -147,6 +147,10 @@ class Empirical(Distribution[T]):
     def stats(self) -> Tuple[float, float]:
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
+    
+    def hist(self):
+        bounds = np.min(self.samples), np.max(self.samples)
+        plt.hist(self.samples, range(*bounds))
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
