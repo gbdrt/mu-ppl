@@ -15,26 +15,14 @@ def canabis_hard():
     assume(yeses == 160)
     return p
 
-# with inference.RejectionSampling(num_samples=1000):
-#     dist = infer(canabis_hard)
-#     dist.hist()
-#     plt.show()
-
-def canabis_soft():
-    p = sample("u", Uniform(0, 1))
-    yes_prop = np.mean([answer(p) for _ in range(200)])
-    observe("bin", Binomial(200, yes_prop), 160)
-    return p
-
-with inference.ImportanceSampling(num_particles=1000):
-    dist = infer(canabis_soft)
-    dist.plot()
+with inference.RejectionSampling(num_samples=1000):
+    dist = infer(canabis_hard)
+    dist.hist()
     plt.show()
-    
 
 
 def canabis_yes():
-    smoke = sample("s", Bernoulli(p))
+    smoke = sample("s", Bernoulli(0.6))
     coin = sample( "c", Bernoulli(0.5))
     assume(coin or smoke)
     return smoke

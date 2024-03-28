@@ -145,9 +145,10 @@ class ImportanceSampling(Handler):
 
 
 class MCMC(Handler):
-    def __init__(self, num_samples: int = 1000, warmups: int = 0):
+    def __init__(self, num_samples: int = 1000, warmups: int = 0, thin: int = 1):
         self.num_samples = num_samples
         self.warmups = warmups
+        self.thin = thin
         self.score = 0.0
         self.trace: List[Any] = []  # log all samples
         self.store: Dict[str, Any] = {}  # samples store
@@ -193,7 +194,7 @@ class MCMC(Handler):
                 new_value = old_value  # Roll back to the previous value
                 self.score, self.trace = old_score, old_trace  # Restore previous state
 
-        return Empirical(samples[self.warmups :])
+        return Empirical(samples[self.warmups :: self.thin])
 
 
 class SSM(ABC, Generic[P, T]):
