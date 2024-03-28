@@ -1,1 +1,1 @@
-from .inference import sample, observe, infer
+from .inference import sample, assume, observe, infer

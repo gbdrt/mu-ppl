@@ -6,6 +6,8 @@ import numpy.random as rand
 from scipy.special import logsumexp  # type: ignore
 import scipy.stats as stats  # type: ignore
 
+import matplotlib.pyplot as plt
+
 
 T = TypeVar("T")
 
@@ -52,6 +54,22 @@ class Bernoulli(Distribution[float]):
 
     def stats(self) -> Tuple[float, float]:
         return stats.bernoulli.stats(self.p)
+    
+class Binomial(Distribution[float]):
+    def __init__(self, n:int, p: float):
+        assert n > 0
+        assert 0 <= p <= 1
+        self.n = n
+        self.p = p
+
+    def sample(self) -> float:
+        return rand.binomial(self.n, self.p)
+
+    def log_prob(self, x) -> float:
+        return stats.binom.logpmf(x, self.n, self.p)
+
+    def stats(self) -> Tuple[float, float]:
+        return stats.binom.stats(self.n, self.p)
 
 
 class Uniform(Distribution[float]):
@@ -108,6 +126,11 @@ class Discrete(Distribution[T]):
         mean = np.average(values, weights=self.probs).item()
         std = np.sqrt(np.cov(values, aweights=self.probs)).item()
         return (mean, std)
+    
+    def plot(self):
+        idx = np.argsort(self.values)
+        plt.plot(np.array(self.values)[idx], np.array(self.probs[idx]))
+        plt.show()
 
 
 class Empirical(Distribution[T]):
