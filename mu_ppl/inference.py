@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from .distributions import Distribution, Dirac, Discrete, Empirical
+import itertools
 
 from copy import deepcopy
 from tqdm import tqdm  # type: ignore
@@ -122,6 +123,56 @@ class RejectionSampling(Handler):
         return Empirical(samples)
 
 
+class Enumeration(Handler):
+    def __init__(self):
+        self.stack : List[Dict[str, Any]]= []
+        self.trace : Dict[str, Any] = {}
+        self.score : float = 0
+
+    def sample(self, name: str, dist: Distribution[T]) -> T:
+        if not self.stack:
+            self.stack = [{name: (v, w)} for v, w in dist.support()]
+        if not name in self.stack[0]:
+            self.stack = [
+                {**d, name: (v, w)}
+                for d in self.stack
+                for (v, w) in dist.support()
+                if self.trace == d
+            ] + [d for d in self.stack if self.trace != d]
+
+        v, w = self.stack[0][name]
+        self.trace[name] = v, w
+        self.score += np.log(w)
+        return v
+
+    def assume(self, pred: bool):
+        if not pred:
+            raise Reject
+
+    def observe(self, name: str, dist: Distribution[T], v: T):
+        self.score += dist.log_prob(v)
+
+    def infer(
+        self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+    ) -> Discrete[T]:
+        def gen():  # Generate one value
+            while True:
+                self.score = 0
+                self.trace = {}
+                try:
+                    v, w = model(*args, **kwargs), self.score
+                    self.stack.pop(0)
+                    return v, w
+                except Reject:
+                    self.stack.pop(0)
+
+        res = [gen()]
+        while self.stack:
+            res.append(gen())
+        values, scores = list(zip(*res))
+        return Discrete(values, scores)
+
+
 class ImportanceSampling(Handler):
     def __init__(self, num_particles: int = 1000):
         self.num_particles = num_particles
@@ -145,10 +196,10 @@ class ImportanceSampling(Handler):
 
 
 class MCMC(Handler):
-    def __init__(self, num_samples: int = 1000, warmups: int = 0, thin: int = 1):
+    def __init__(self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1):
         self.num_samples = num_samples
         self.warmups = warmups
-        self.thin = thin
+        self.thinning = thinning
         self.score = 0.0
         self.trace: List[Any] = []  # log all samples
         self.store: Dict[str, Any] = {}  # samples store
@@ -178,6 +229,7 @@ class MCMC(Handler):
         new_value = model(*args, **kwargs)  # Generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples - 1)):
+            print(f"XXXX {self.score} {new_value}")
             samples.append(new_value)  # Store current sample
             old_score, old_trace = self.score, self.trace  # Store current state
             old_value = new_value  # Store current value
@@ -194,7 +246,7 @@ class MCMC(Handler):
                 new_value = old_value  # Roll back to the previous value
                 self.score, self.trace = old_score, old_trace  # Restore previous state
 
-        return Empirical(samples[self.warmups :: self.thin])
+        return Empirical(samples[self.warmups :: self.thinning])
 
 
 class SSM(ABC, Generic[P, T]):

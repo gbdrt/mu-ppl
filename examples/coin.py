@@ -16,6 +16,7 @@ print(coin([0, 1]))
 with inference.RejectionSampling(num_samples=10):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
     print(dist.stats())
+    dist.hist()
 
 with inference.ImportanceSampling(num_particles=1000):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])

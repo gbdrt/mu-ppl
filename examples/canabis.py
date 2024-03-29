@@ -4,31 +4,30 @@ from mu_ppl import infer, sample, assume, observe
 from mu_ppl.distributions import Uniform, Binomial, Bernoulli
 import matplotlib.pyplot as plt
 
-def answer (p):
+
+def survey(p):
     smoke = sample("s", Bernoulli(p))
-    coin = sample( "c", Bernoulli(0.5))
+    coin = sample("c", Bernoulli(0.5))
     return coin or smoke
 
-def canabis_hard():
+def canabis(yes, total):
     p = sample("u", Uniform(0, 1))
-    yeses = np.sum([answer(p) for _ in range(200)])
-    assume(yeses == 160)
+    smokers = np.sum([survey(p) for _ in range(total)])
+    assume(yes == smokers)
     return p
 
-with inference.RejectionSampling(num_samples=1000):
-    dist = infer(canabis_hard)
-    dist.hist()
-    plt.show()
+with inference.RejectionSampling(num_samples=100):
+    dist = infer(canabis, 160, 200)
 
-
-def canabis_yes():
-    smoke = sample("s", Bernoulli(0.6))
-    coin = sample( "c", Bernoulli(0.5))
+def soldier():
+    p = sample("p", dist)
+    smoke = sample("s", Bernoulli(p))
+    coin = sample("c", Bernoulli(0.5))
     assume(coin or smoke)
     return smoke
 
-with inference.RejectionSampling(num_samples=1000):
-    dist = infer(canabis_yes)
+with inference.RejectionSampling(num_samples = 1000):
+    dist = infer(soldier)
     dist.hist()
     plt.show()
     print(dist.stats())

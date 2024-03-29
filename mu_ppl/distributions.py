@@ -48,6 +48,9 @@ class Bernoulli(Distribution[float]):
         assert 0 <= p <= 1
         self.p = p
 
+    def support(self):
+        return [(0, (1 - self.p)), (1, self.p)]
+
     def sample(self) -> float:
         return rand.binomial(1, self.p)
 
@@ -115,6 +118,17 @@ class Discrete(Distribution[T]):
         lse = logsumexp(logits)
         self.probs = np.exp(logits - lse)
 
+    def _shrink(self):
+        res = {}
+        for v, w in zip(self.values, self.probs):
+            if v in res:
+                res[v] += w
+            else:
+                res[v] = w
+        self.values = list(res.keys())
+        self.probs = list(res.values())
+        self.logits = np.log(self.probs)
+
     def sample(self) -> T:
         u = rand.rand()
         i = np.searchsorted(np.cumsum(self.probs), u)
@@ -131,7 +145,8 @@ class Discrete(Distribution[T]):
         return (mean, std)
 
     def plot(self, **kwargs):
-        sns.lineplot(x=self.values, y=self.probs, **kwargs)
+        self._shrink()
+        sns.barplot(x=self.values, y=self.probs, **kwargs)
 
 
 class Empirical(Distribution[T]):
@@ -149,8 +164,8 @@ class Empirical(Distribution[T]):
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
 
-    def hist(self, *arg, **kwargs):
-        sns.histplot(self.samples, *arg, kde=True, stat="density", **kwargs)
+    def hist(self, **kwargs):
+        sns.histplot(self.samples, kde=True, stat="density", **kwargs)
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:

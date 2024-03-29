@@ -5,8 +5,11 @@ from mu_ppl.distributions import Uniform, Binomial
 import matplotlib.pyplot as plt
 
 
-b0 = 493472
-f0 = 241945
+# b0 = 493472
+# f0 = 241945
+
+b0 = 297018
+f0 = 145159
 
 
 def laplace():
