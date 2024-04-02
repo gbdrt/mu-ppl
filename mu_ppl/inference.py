@@ -229,7 +229,6 @@ class MCMC(Handler):
         new_value = model(*args, **kwargs)  # Generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples - 1)):
-            print(f"XXXX {self.score} {new_value}")
             samples.append(new_value)  # Store current sample
             old_score, old_trace = self.score, self.trace  # Store current state
             old_value = new_value  # Store current value

@@ -28,14 +28,14 @@ def funny_bernoulli():
     #     return c
 
 
-# with inference.RejectionSampling(num_samples=10000):
-#     dist = infer(funny_bernoulli)
-#     print(dist.stats())
-#     dist.hist()
-#     plt.show()
+with inference.RejectionSampling(num_samples=10000):
+    dist = infer(funny_bernoulli)
+    print(dist.stats())
+    dist.hist()
+    plt.show()
 
 with inference.Enumeration():
     dist = infer(funny_bernoulli)
     print(dist.stats())
-    dist.plot()
+    dist.hist()
     plt.show()

@@ -7,6 +7,7 @@ from scipy.special import logsumexp  # type: ignore
 import scipy.stats as stats  # type: ignore
 
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 sns.set_theme()
 
@@ -118,7 +119,7 @@ class Discrete(Distribution[T]):
         lse = logsumexp(logits)
         self.probs = np.exp(logits - lse)
 
-    def _shrink(self):
+    def shrink(self):
         res = {}
         for v, w in zip(self.values, self.probs):
             if v in res:
@@ -145,8 +146,11 @@ class Discrete(Distribution[T]):
         return (mean, std)
 
     def plot(self, **kwargs):
-        self._shrink()
-        sns.barplot(x=self.values, y=self.probs, **kwargs)
+        plt.plot(self.values, self.probs, marker=".", linestyle="", **kwargs)
+
+    def hist(self, **kwargs):
+        self.shrink()
+        sns.barplot(x=self.values, y=self.probs, errorbar=None)
 
 
 class Empirical(Distribution[T]):
