@@ -13,8 +13,8 @@ f0 = 145159
 
 
 def laplace():
-    p = sample("p", Uniform(0, 1))
-    observe("obs", Binomial(b0, p), f0)
+    p = sample(Uniform(0, 1))
+    observe(Binomial(b0, p), f0)
     return p
 
 

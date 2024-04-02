@@ -7,12 +7,12 @@ from typing import (
     Iterator,
     Any,
     Dict,
-    Type,
+    Optional,
 )
 from abc import ABC, abstractmethod
 
 import numpy as np
-from .distributions import Distribution, Dirac, Discrete, Empirical
+from .distributions import Distribution, Dirac, Categorical, Empirical
 import itertools
 
 from copy import deepcopy
@@ -38,13 +38,13 @@ class Handler:
         global _HANDLER
         _HANDLER = self.old_handler
 
-    def sample(self, name: str, dist: Distribution[T]) -> T:
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
 
     def assume(self, pred: bool):
         pass
 
-    def observe(self, name: str, dist: Distribution[T], value: T):
+    def observe(self, dist: Distribution[T], value: T):
         pass  # Ignore
 
     def infer(
@@ -56,37 +56,20 @@ class Handler:
 _HANDLER = Handler()
 
 
-def sample(name: str, dist: Distribution[T]) -> T:
-    return _HANDLER.sample(name, dist)
+def sample(dist: Distribution[T], name: Optional[str] = None) -> T:
+    return _HANDLER.sample(dist, name)
 
 
 def assume(pred: bool):
     return _HANDLER.assume(pred)
 
 
-def observe(name: str, dist: Distribution[T], value: T):
-    return _HANDLER.observe(name, dist, value)
+def observe(dist: Distribution[T], value: T):
+    return _HANDLER.observe(dist, value)
 
 
 def infer(model: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Distribution[T]:
     return _HANDLER.infer(model, *args)
-
-
-class BasicSampling(Handler):
-    def __init__(self, num_samples: int = 1000):
-        self.num_samples = num_samples
-
-    def sample(self, name: str, dist: Distribution[T]) -> T:
-        return dist.sample()  # Draw sample
-
-    def observe(self, name: str, dist: Distribution[T], v: T):
-        pass
-
-    def infer(
-        self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
-    ) -> Empirical[T]:
-        samples = [model(*args, **kwargs) for _ in tqdm(range(self.num_samples))]
-        return Empirical(samples)
 
 
 class Reject(Exception):
@@ -97,14 +80,14 @@ class RejectionSampling(Handler):
     def __init__(self, num_samples: int = 1000):
         self.num_samples = num_samples
 
-    def sample(self, name: str, dist: Distribution[T]) -> T:
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
 
     def assume(self, pred: bool):
         if not pred:
             raise Reject
 
-    def observe(self, name: str, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T):
         x = dist.sample()  # Draw a sample
         if x != v:
             raise Reject  # Reject if it's not the observation
@@ -125,36 +108,42 @@ class RejectionSampling(Handler):
 
 class Enumeration(Handler):
     def __init__(self):
-        self.stack : List[Dict[str, Any]]= []
-        self.trace : Dict[str, Any] = {}
-        self.score : float = 0
+        self.stack: List[Dict[str, Any]] = []
+        self.trace: Dict[str, Any] = {}
+        self.score: float = 0
 
-    def sample(self, name: str, dist: Distribution[T]) -> T:
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
+        assert name, "Enumeration inference requires naming sample sites"
+        assert isinstance(dist, Categorical), "Enumeration only works with Categorical distributions"
         if not self.stack:
+            # Empty stack: Add all possible values to the stack
             self.stack = [{name: (v, w)} for v, w in dist.support()]
         if not name in self.stack[0]:
-            self.stack = [
+            # New sample site
+            self.stack = [  # Add all possible traces starting with self.trace
                 {**d, name: (v, w)}
                 for d in self.stack
                 for (v, w) in dist.support()
                 if self.trace == d
-            ] + [d for d in self.stack if self.trace != d]
+            ] + [  # Keep all other traces
+                d for d in self.stack if self.trace != d
+            ]
 
-        v, w = self.stack[0][name]
-        self.trace[name] = v, w
-        self.score += np.log(w)
+        v, w = self.stack[0][name]  # Pick the first trace
+        self.trace[name] = v, w  # Record the current choice in self.trace
+        self.score += np.log(w)  # Update the score
         return v
 
     def assume(self, pred: bool):
         if not pred:
             raise Reject
 
-    def observe(self, name: str, dist: Distribution[T], v: T):
-        self.score += dist.log_prob(v)
+    def observe(self, dist: Distribution[T], v: T):
+        self.score += dist.log_prob(v)  # Update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
-    ) -> Discrete[T]:
+    ) -> Categorical[T]:
         def gen():  # Generate one value
             while True:
                 self.score = 0
@@ -170,7 +159,7 @@ class Enumeration(Handler):
         while self.stack:
             res.append(gen())
         values, scores = list(zip(*res))
-        return Discrete(values, scores)
+        return Categorical(values, scores)
 
 
 class ImportanceSampling(Handler):
@@ -179,20 +168,20 @@ class ImportanceSampling(Handler):
         self.id = 0
         self.scores = [0.0 for _ in range(num_particles)]
 
-    def sample(self, name: str, dist: Distribution[T]) -> T:
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
 
-    def observe(self, name: str, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T):
         self.scores[self.id] += dist.log_prob(v)  # Update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
-    ) -> Discrete[T]:
+    ) -> Categorical[T]:
         values: List[T] = []
         for i in tqdm(range(self.num_particles)):  # Run num_particles executions
             self.id = i
             values.append(model(*args, **kwargs))
-        return Discrete(values, self.scores)
+        return Categorical(values, self.scores)
 
 
 class MCMC(Handler):
@@ -204,7 +193,8 @@ class MCMC(Handler):
         self.trace: List[Any] = []  # log all samples
         self.store: Dict[str, Any] = {}  # samples store
 
-    def sample(self, name: str, dist: Distribution[T]) -> T:
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
+        assert name, "MCMC inference requires naming sample sites"
         try:  # Reuse if possible
             v = self.store[name]
             self.score += dist.log_prob(v)
@@ -214,7 +204,7 @@ class MCMC(Handler):
         self.trace.append(v)
         return v
 
-    def observe(self, name: str, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T):
         self.score += dist.log_prob(v)  # Update the score
 
     def infer(
@@ -262,14 +252,14 @@ class SMC(ImportanceSampling):
     # Model must be expressed as a state machine (SSM).
     # Resample at each step
     def resample(self, particles: List[SSM[P, T]]) -> List[SSM[P, T]]:
-        d = Discrete(particles, self.scores)
+        d = Categorical(particles, self.scores)
         return [
             deepcopy(d.sample()) for _ in range(self.num_particles)
         ]  # Resample a new set of particles
 
     def infer_stream(
         self, ssm: type[SSM[P, T]], *args: Iterator[P.args]
-    ) -> Iterator[Discrete[T]]:
+    ) -> Iterator[Categorical[T]]:
         particles: List[SSM[P, T]] = [
             ssm() for _ in range(self.num_particles)
         ]  # Initialise the particles
@@ -278,6 +268,6 @@ class SMC(ImportanceSampling):
             for i in range(self.num_particles):
                 self.id = i
                 values.append(particles[i].step(*y))  # Execute all the particles
-            yield Discrete(values, self.scores)  # Return current distribution
+            yield Categorical(values, self.scores)  # Return current distribution
             particles = self.resample(particles)  # Resample the particles
             self.scores = [0.0 for _ in range(self.num_particles)]  # Reset the score

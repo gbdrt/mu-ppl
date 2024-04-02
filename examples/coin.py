@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 
 def coin(obs):
-    p = sample("p", Uniform(0, 1))
+    p = sample(Uniform(0, 1), name="p")
     for i, o in enumerate(obs):
-        observe(f"o_{i}", Bernoulli(p), o)
+        observe(Bernoulli(p), o)
     return p
 
 
@@ -19,14 +19,14 @@ with inference.RejectionSampling(num_samples=10):
     print(dist.stats())
     dist.hist()
     plt.show()
-    
+
 
 with inference.ImportanceSampling(num_particles=10000):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
     print(dist.stats())
     dist.plot()
     plt.show()
-    
+
 
 with inference.MCMC(num_samples=1000):
     dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])

@@ -39,9 +39,9 @@ def logistic(a, b, t):
 
 
 def challenger(temps, fails):
-    a = sample("a", Gaussian(0, 31))
-    b = sample("b", Gaussian(0, 31))
-    [observe("o", Bernoulli(t), f) for (t, f) in zip(logistic(a, b, temps), fails)]
+    a = sample(Gaussian(0, 31), name = "a")
+    b = sample(Gaussian(0, 31), name = "b")
+    [observe(Bernoulli(t), f) for (t, f) in zip(logistic(a, b, temps), fails)]
     return logistic(a, b, 31)
 
 

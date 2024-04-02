@@ -9,12 +9,12 @@ import numpy as np
 class HMM(inference.SSM):
     def __init__(self):
         self.cpt = 0
-        self.x = sample("x_0", Gaussian(0, 1))
+        self.x = sample(Gaussian(0, 1), name="x_0")
 
     def step(self, y: float) -> float:
         self.cpt += 1
-        self.x = sample(f"x_{self.cpt}", Gaussian(self.x, 2))
-        observe(f"o_{self.cpt}", Gaussian(self.x, 0.5), y)
+        self.x = sample(Gaussian(self.x, 2), name=f"x_{self.cpt}")
+        observe(Gaussian(self.x, 0.5), y)
         return self.x
 
 

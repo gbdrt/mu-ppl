@@ -29,9 +29,77 @@ class Distribution(ABC, Generic[T]):
         pass
 
 
-class Dirac(Distribution[T]):
+class Categorical(Distribution[T]):
+    def __init__(self, values: List[T], logits: List[float]):
+        assert len(values) == len(logits)
+        self.values = values
+        self.logits = logits
+        lse = logsumexp(logits)
+        self.probs = np.exp(logits - lse)
+
+    def shrink(self):
+        res = {}
+        for v, w in zip(self.values, self.probs):
+            if v in res:
+                res[v] += w
+            else:
+                res[v] = w
+        self.values = list(res.keys())
+        self.probs = list(res.values())
+        self.logits = np.log(self.probs)
+
+    def support(self) -> List[Tuple[T, float]]:
+        return list(zip(self.values, self.probs))
+
+    def sample(self) -> T:
+        u = rand.rand()
+        i = np.searchsorted(np.cumsum(self.probs), u)
+        return self.values[i]
+
+    def log_prob(self, v: T) -> float:
+        i = self.values.index(v)
+        return np.log(self.probs[i])
+
+    def stats(self) -> Tuple[float, float]:
+        values = np.array(self.values)
+        mean = np.average(values, weights=self.probs).item()
+        std = np.sqrt(np.cov(values, aweights=self.probs)).item()
+        return (mean, std)
+
+    def plot(self, **kwargs):
+        plt.plot(self.values, self.probs, marker=".", linestyle="", **kwargs)
+
+    def hist(self, **kwargs):
+        self.shrink()
+        sns.barplot(x=self.values, y=self.probs, errorbar=None)
+
+
+class Empirical(Distribution[T]):
+    def __init__(self, samples: List[T]):
+        self.samples = samples
+
+    def sample(self) -> T:
+        i = rand.randint(len(self.samples))
+        return self.samples[i]
+
+    def log_prob(self, v: T) -> float:
+        return 1 / len(self.samples) if v in self.samples else 0
+
+    def stats(self) -> Tuple[float, float]:
+        samples = np.array(self.samples)
+        return (np.mean(samples), np.std(samples))
+
+    def hist(self, **kwargs):
+        sns.histplot(self.samples, kde=True, stat="probability", **kwargs)
+
+
+
+class Dirac(Categorical[T]):
     def __init__(self, v: T):
         self.v = v
+
+    def support(self) -> List[Tuple[T, float]]:
+        return [(self.v, 1.0)]
 
     def sample(self) -> T:
         return self.v
@@ -44,12 +112,12 @@ class Dirac(Distribution[T]):
         return (self.v, 0.0)
 
 
-class Bernoulli(Distribution[float]):
+class Bernoulli(Categorical[float]):
     def __init__(self, p: float):
         assert 0 <= p <= 1
         self.p = p
 
-    def support(self):
+    def support(self) -> List[Tuple[T, float]]:
         return [(0, (1 - self.p)), (1, self.p)]
 
     def sample(self) -> float:
@@ -111,71 +179,10 @@ class Gaussian(Distribution[float]):
         return stats.norm.stats(loc=self.mu, scale=self.sigma)
 
 
-class Discrete(Distribution[T]):
-    def __init__(self, values: List[T], logits: List[float]):
-        assert len(values) == len(logits)
-        self.values = values
-        self.logits = logits
-        lse = logsumexp(logits)
-        self.probs = np.exp(logits - lse)
-
-    def shrink(self):
-        res = {}
-        for v, w in zip(self.values, self.probs):
-            if v in res:
-                res[v] += w
-            else:
-                res[v] = w
-        self.values = list(res.keys())
-        self.probs = list(res.values())
-        self.logits = np.log(self.probs)
-
-    def sample(self) -> T:
-        u = rand.rand()
-        i = np.searchsorted(np.cumsum(self.probs), u)
-        return self.values[i]
-
-    def log_prob(self, v: T) -> float:
-        i = self.values.index(v)
-        return np.log(self.probs[i])
-
-    def stats(self) -> Tuple[float, float]:
-        values = np.array(self.values)
-        mean = np.average(values, weights=self.probs).item()
-        std = np.sqrt(np.cov(values, aweights=self.probs)).item()
-        return (mean, std)
-
-    def plot(self, **kwargs):
-        plt.plot(self.values, self.probs, marker=".", linestyle="", **kwargs)
-
-    def hist(self, **kwargs):
-        self.shrink()
-        sns.barplot(x=self.values, y=self.probs, errorbar=None)
-
-
-class Empirical(Distribution[T]):
-    def __init__(self, samples: List[T]):
-        self.samples = samples
-
-    def sample(self) -> T:
-        i = rand.randint(len(self.samples))
-        return self.samples[i]
-
-    def log_prob(self, v: T) -> float:
-        return 1 / len(self.samples) if v in self.samples else 0
-
-    def stats(self) -> Tuple[float, float]:
-        samples = np.array(self.samples)
-        return (np.mean(samples), np.std(samples))
-
-    def hist(self, **kwargs):
-        sns.histplot(self.samples, kde=True, stat="probability", **kwargs)
-
-
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
     match dist:
-        case Discrete():
-            return [Discrete(list(values), dist.logits) for values in zip(*dist.values)]
+        case Categorical():
+            return [Categorical(list(values), dist.logits) for values in zip(*dist.values)]
         case Empirical():
             return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case _:

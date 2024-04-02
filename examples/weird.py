@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 
 
 def weird():
-    b = sample("b", Bernoulli(0.5))
+    b = sample(Bernoulli(0.5))
     mu = 0.5 if (b == 1) else 1.0
-    theta = sample("theta", Gaussian(mu, 1.0))
+    theta = sample(Gaussian(mu, 1.0))
     if theta > 0.0:
-        observe("obs", Gaussian(mu, 0.5), theta)
+        observe(Gaussian(mu, 0.5), theta)
         return theta
     else:
         return weird()
