@@ -165,7 +165,7 @@ class Empirical(Distribution[T]):
         return (np.mean(samples), np.std(samples))
 
     def hist(self, **kwargs):
-        sns.histplot(self.samples, kde=True, stat="density", **kwargs)
+        sns.histplot(self.samples, kde=True, stat="probability", **kwargs)
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
