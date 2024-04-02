@@ -46,9 +46,7 @@ def challenger(temps, fails):
     return logistic(a, b, 31)
 
 
-np.seterr(invalid="raise")
-with inference.MCMC(num_samples=1100, warmups=1000):
-    # num_samples=3000, warmups=1000, thinning=2):
+with inference.MCMC(num_samples=2000, warmups=10000, thinning=2):
     dist = infer(challenger, temps, fails)
     dist.hist()
     plt.show()
