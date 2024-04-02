@@ -6,7 +6,7 @@ import numpy.random as rand
 from scipy.special import logsumexp  # type: ignore
 import scipy.stats as stats  # type: ignore
 
-import seaborn as sns
+import seaborn as sns  # type: ignore
 import matplotlib.pyplot as plt
 
 sns.set_theme()
@@ -116,7 +116,7 @@ class Bernoulli(Categorical[float]):
         assert 0 <= p <= 1
         self.p = p
 
-    def support(self) -> List[Tuple[T, float]]:
+    def support(self) -> List[Tuple[float, float]]:
         return [(0, (1 - self.p)), (1, self.p)]
 
     def sample(self) -> float:

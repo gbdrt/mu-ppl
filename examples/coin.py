@@ -1,7 +1,6 @@
-import numpy as np
 import mu_ppl.inference as inference
 from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Uniform, Bernoulli
+from mu_ppl.distributions import Uniform, Bernoulli, Empirical
 import matplotlib.pyplot as plt
 
 
@@ -29,7 +28,7 @@ def coin(obs):
 
 
 with inference.MCMC(num_samples=1000):
-    dist = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+    dist: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist.stats())
     dist.hist()
     plt.show()

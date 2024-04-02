@@ -3,7 +3,7 @@ import mu_ppl.inference as inference
 from mu_ppl import infer, sample, observe
 from mu_ppl.distributions import Empirical, Uniform, Bernoulli
 import matplotlib.pyplot as plt
-import seaborn as sns
+import seaborn as sns  # type: ignore
 
 
 def plinko(n: int) -> float:

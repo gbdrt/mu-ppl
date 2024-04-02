@@ -3,7 +3,7 @@ import mu_ppl.inference as inference
 from mu_ppl import infer, sample, assume, observe
 from mu_ppl.distributions import Uniform, Binomial, Bernoulli, Gaussian
 import matplotlib.pyplot as plt
-from scipy.special import expit
+from scipy.special import expit  # type: ignore
 
 temps = np.array(
     [
@@ -36,7 +36,7 @@ fails = np.array([0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
 
 
 def logistic(a, b, t):
-    return expit(- (a + b * t))
+    return expit(-(a + b * t))
 
 
 def challenger(temps, fails):
@@ -48,6 +48,6 @@ def challenger(temps, fails):
 
 
 with inference.MCMC(num_samples=2000, warmups=10000, thinning=2):
-    dist = infer(challenger, temps, fails)
+    dist: Empirical[float] = infer(challenger, temps, fails)  # type: ignore
     dist.hist()
     plt.show()

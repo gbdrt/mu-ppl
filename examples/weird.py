@@ -1,4 +1,3 @@
-import numpy as np
 import mu_ppl.inference as inference
 from mu_ppl import infer, sample, observe, assume
 from mu_ppl.distributions import Uniform, Bernoulli, Gaussian
@@ -17,6 +16,6 @@ def weird():
 
 
 with inference.ImportanceSampling(num_particles=1000):
-    dist = infer(weird)
+    dist: Categorical[float] = infer(weird)  # type: ignore
     dist.plot()
     plt.show()

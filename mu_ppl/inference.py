@@ -8,6 +8,7 @@ from typing import (
     Any,
     Dict,
     Optional,
+    Union,
 )
 from abc import ABC, abstractmethod
 
@@ -157,10 +158,12 @@ class Enumeration(Handler):
                 except Reject:
                     self.stack.pop(0)
 
-        res = [gen()]
+        values = []
+        scores = []
+        v, w = gen()
         while self.stack:
-            res.append(gen())
-        values, scores = list(zip(*res))
+            values.append(v)
+            scores.append(w)
         return Categorical(values, scores)
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 import mu_ppl.inference as inference
 from mu_ppl import infer, sample, assume, observe
-from mu_ppl.distributions import Uniform, Binomial
+from mu_ppl.distributions import Uniform, Binomial, Categorical
 import matplotlib.pyplot as plt
 
 
@@ -19,7 +19,7 @@ def laplace():
 
 
 with inference.ImportanceSampling(num_particles=1000):
-    dist = infer(laplace)
+    dist: Categorical[float] = infer(laplace)  # type: ignore
     print(dist.stats())
     dist.plot()
     plt.show()
