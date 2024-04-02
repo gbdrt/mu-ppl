@@ -3,6 +3,7 @@ import mu_ppl.inference as inference
 from mu_ppl import infer, sample, assume, observe
 from mu_ppl.distributions import Uniform, Binomial, Bernoulli, Gaussian
 import matplotlib.pyplot as plt
+from scipy.special import expit
 
 temps = np.array(
     [
@@ -35,7 +36,7 @@ fails = np.array([0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
 
 
 def logistic(a, b, t):
-    return 1 / (1 + np.exp(b * t + a))
+    return expit(- (a + b * t))
 
 
 def challenger(temps, fails):
