@@ -39,12 +39,14 @@ def logistic(a, b, t):
 
 
 def challenger(temps, fails):
-    a = sample(Gaussian(0, 31), name = "a")
-    b = sample(Gaussian(0, 31), name = "b")
-    [observe(Bernoulli(t), f) for (t, f) in zip(logistic(a, b, temps), fails)]
+    a = sample(Gaussian(0, 31), name="a")
+    b = sample(Gaussian(0, 31), name="b")
+    for i, (t, f) in enumerate(zip(logistic(a, b, temps), fails)):
+        observe(Bernoulli(t), f, name=f"o_{i}")
     return logistic(a, b, 31)
 
 
+np.seterr(invalid="raise")
 with inference.MCMC(num_samples=1100, warmups=1000):
     # num_samples=3000, warmups=1000, thinning=2):
     dist = infer(challenger, temps, fails)

@@ -17,4 +17,3 @@ def plinko(n: int) -> float:
 res = [plinko(100) for _ in range(1000)]
 sns.histplot(res, kde=True, stat="probability")
 plt.show()
-

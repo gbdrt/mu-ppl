@@ -44,7 +44,7 @@ class Handler:
     def assume(self, pred: bool):
         pass
 
-    def observe(self, dist: Distribution[T], value: T):
+    def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
         pass  # Ignore
 
     def infer(
@@ -57,15 +57,15 @@ _HANDLER = Handler()
 
 
 def sample(dist: Distribution[T], name: Optional[str] = None) -> T:
-    return _HANDLER.sample(dist, name)
+    return _HANDLER.sample(dist, name=name)
 
 
 def assume(pred: bool):
     return _HANDLER.assume(pred)
 
 
-def observe(dist: Distribution[T], value: T):
-    return _HANDLER.observe(dist, value)
+def observe(dist: Distribution[T], value: T, name: Optional[str] = None):
+    return _HANDLER.observe(dist, value, name=name)
 
 
 def infer(model: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Distribution[T]:
@@ -87,7 +87,7 @@ class RejectionSampling(Handler):
         if not pred:
             raise Reject
 
-    def observe(self, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         x = dist.sample()  # Draw a sample
         if x != v:
             raise Reject  # Reject if it's not the observation
@@ -114,7 +114,9 @@ class Enumeration(Handler):
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         assert name, "Enumeration inference requires naming sample sites"
-        assert isinstance(dist, Categorical), "Enumeration only works with Categorical distributions"
+        assert isinstance(
+            dist, Categorical
+        ), "Enumeration only works with Categorical distributions"
         if not self.stack:
             # Empty stack: Add all possible values to the stack
             self.stack = [{name: (v, w)} for v, w in dist.support()]
@@ -138,7 +140,7 @@ class Enumeration(Handler):
         if not pred:
             raise Reject
 
-    def observe(self, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         self.score += dist.log_prob(v)  # Update the score
 
     def infer(
@@ -171,7 +173,7 @@ class ImportanceSampling(Handler):
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
 
-    def observe(self, dist: Distribution[T], v: T):
+    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         self.scores[self.id] += dist.log_prob(v)  # Update the score
 
     def infer(
@@ -189,51 +191,66 @@ class MCMC(Handler):
         self.num_samples = num_samples
         self.warmups = warmups
         self.thinning = thinning
-        self.score = 0.0
         self.trace: List[Any] = []  # log all samples
-        self.store: Dict[str, Any] = {}  # samples store
+        self.samples: Dict[str, Any] = {}  # samples store
+        self.cache: Dict[str, Any] = {}  # sample cache to be reused
+        self.scores: Dict[str, Any] = {}  # score store
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         assert name, "MCMC inference requires naming sample sites"
         try:  # Reuse if possible
-            v = self.store[name]
-            self.score += dist.log_prob(v)
+            v = self.cache[name]
         except KeyError:
             v = dist.sample()  # Otherwise draw a sample
-            self.store[name] = v  # Store the sample
-        self.trace.append(v)
+        self.samples[name] = v  # Store the sample
+        self.scores[name] = dist.log_prob(v)
         return v
 
-    def observe(self, dist: Distribution[T], v: T):
-        self.score += dist.log_prob(v)  # Update the score
+    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
+        assert name, "MCMC inference requires naming observation sites"
+        self.scores[name] = dist.log_prob(v)  # Update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
-        def _mh(old_trace, old_score, new_trace, new_score):  # MH acceptance prob
-            fw = -np.log(len(old_trace))
-            bw = -np.log(len(new_trace))
-            return min(1.0, np.exp(np.float128(new_score - old_score + bw - fw)))
+        def mh(
+            regen, old_samples, old_scores, new_samples, new_scores
+        ):  # MH acceptance prob
+            x_new = {regen} | (new_samples.keys() - old_samples.keys())
+            x_old = {regen} | (old_samples.keys() - new_samples.keys())
+            alpha = np.log(len(old_samples)) - np.log(len(new_samples))
+            for v in new_scores.keys() - x_new:
+                alpha += new_scores[v]
+            for v in old_scores.keys() - x_old:
+                alpha -= old_scores[v]
+            return np.exp(alpha)
 
         samples: List[T] = []
         new_value = model(*args, **kwargs)  # Generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples - 1)):
             samples.append(new_value)  # Store current sample
-            old_score, old_trace = self.score, self.trace  # Store current state
+            old_samples, old_scores = self.samples, self.scores  # Store current state
             old_value = new_value  # Store current value
 
-            regen = list(self.store.keys())[np.random.randint(len(self.store))]
-            self.score = 0
-            self.trace = []
-            del self.store[regen]
+            regen = list(self.samples.keys())[np.random.randint(len(self.samples))]
+            self.cache = deepcopy(self.samples)  # Use samples as next cache
+            del self.cache[regen]  # force regen to be resampled
+            self.samples = {}  # Reset the samples
+            self.scores = {}  # Reset the scores
+
             new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
 
-            if np.random.random() < _mh(old_trace, old_score, self.trace, self.score):
+            if np.random.random() < mh(
+                regen, old_samples, old_scores, self.samples, self.scores
+            ):
                 samples.append(new_value)  # Keep the new trace and the new value
             else:
                 new_value = old_value  # Roll back to the previous value
-                self.score, self.trace = old_score, old_trace  # Restore previous state
+                self.samples, self.scores = (
+                    old_samples,
+                    old_scores,
+                )  # Restore previous state
 
         return Empirical(samples[self.warmups :: self.thinning])
 

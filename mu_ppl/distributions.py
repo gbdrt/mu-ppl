@@ -93,7 +93,6 @@ class Empirical(Distribution[T]):
         sns.histplot(self.samples, kde=True, stat="probability", **kwargs)
 
 
-
 class Dirac(Categorical[T]):
     def __init__(self, v: T):
         self.v = v
@@ -182,7 +181,9 @@ class Gaussian(Distribution[float]):
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
     match dist:
         case Categorical():
-            return [Categorical(list(values), dist.logits) for values in zip(*dist.values)]
+            return [
+                Categorical(list(values), dist.logits) for values in zip(*dist.values)
+            ]
         case Empirical():
             return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case _:

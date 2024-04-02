@@ -18,6 +18,6 @@ with inference.RejectionSampling(num_samples=1000):
     dist = infer(model)
     x, y = list(zip(*dist.samples))
     sns.scatterplot(x=x, y=y)
-    plt.axis('scaled')
+    plt.axis("scaled")
     plt.show()
     # print(dist.samples)
