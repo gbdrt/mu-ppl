@@ -1,6 +1,4 @@
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume
-from mu_ppl.distributions import Bernoulli, Empirical, Categorical
+from mu_ppl import *
 import matplotlib.pyplot as plt
 
 
@@ -19,14 +17,14 @@ def funny_bernoulli() -> int:
     return a + b + c
 
 
-with inference.RejectionSampling(num_samples=1000):
-    dist1: Empirical[int] = infer(funny_bernoulli)  # type: ignore
-    print(dist1.stats())
-    dist1.hist()
-    plt.show()
+# with RejectionSampling(num_samples=1000):
+#     dist1: Empirical[int] = infer(funny_bernoulli)  # type: ignore
+#     print(dist1.stats())
+#     viz(dist1)
+#     plt.show()
 
-with inference.Enumeration():
+with Enumeration():
     dist2: Categorical[float] = infer(funny_bernoulli)  # type: ignore
     print(dist2.stats())
-    dist2.hist()
+    viz(dist2)
     plt.show()

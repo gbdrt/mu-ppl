@@ -1,7 +1,5 @@
 import numpy as np
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Bernoulli, Gaussian
+from mu_ppl import *
 import matplotlib.pyplot as plt
 from scipy.special import expit  # type: ignore
 
@@ -47,7 +45,7 @@ def challenger(temps, fails):
     return logistic(a, b, 31)
 
 
-with inference.MCMC(num_samples=2000, warmups=10000, thinning=2):
+with MCMC(num_samples=2000, warmups=10000, thinning=2):
     dist: Empirical[float] = infer(challenger, temps, fails)  # type: ignore
-    dist.hist()
+    viz(dist)
     plt.show()

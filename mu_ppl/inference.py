@@ -8,27 +8,30 @@ from typing import (
     Any,
     Dict,
     Optional,
-    Union,
 )
 from abc import ABC, abstractmethod
 
 import numpy as np
 from .distributions import Distribution, Dirac, Categorical, Empirical
-import itertools
 
 from copy import deepcopy
 from tqdm import tqdm  # type: ignore
-
-"""
-Handler based inference à la Pyro
-https://probprog.cc/2020/assets/posters/thu/49.pdf
-"""
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
 
 class Handler:
+    """
+    Handler based inference à la Pyro
+    https://probprog.cc/2020/assets/posters/thu/49.pdf
+
+    A handler interprets probabilistic constructs inside a context manager.
+    We can try several inference algorithms on the same model.
+    The implementation of each constructs depends on the inference algorithm.
+    The default handler simply draw a sample from the model and ignore conditionning operators (`assume`, `observe`).
+    """
+
     def __enter__(self):
         global _HANDLER
         self.old_handler = _HANDLER
@@ -43,7 +46,7 @@ class Handler:
         return dist.sample()  # Draw sample
 
     def assume(self, pred: bool):
-        pass
+        pass  # Ignore
 
     def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
         pass  # Ignore
@@ -58,18 +61,70 @@ _HANDLER = Handler()
 
 
 def sample(dist: Distribution[T], name: Optional[str] = None) -> T:
+    """
+    Sample a distribution
+
+    Parameters
+    ----------
+    dist: Distribution[T]
+        Prior distribution
+    name: Optional[str]
+        Unique name for the sample site (required by some inference)
+
+    Returns
+    -------
+    T
+        A sample of the distribution
+    """
     return _HANDLER.sample(dist, name=name)
 
 
 def assume(pred: bool):
+    """
+    Reject execution which do not satisfy a boolean predicate
+
+    Parameters
+    ----------
+    pred: bool
+        Boolean condition
+    """
     return _HANDLER.assume(pred)
 
 
 def observe(dist: Distribution[T], value: T, name: Optional[str] = None):
+    """
+    Assume that a value `v` was sampled form a distribution `dist`.
+
+    Parameters
+    ----------
+    dist: Distribution[T]
+        Assumed distribution
+    value: T
+        Observed value
+    name: Optional[str]
+        Unique name for the observation (required by some inference)
+    """
     return _HANDLER.observe(dist, value, name=name)
 
 
 def infer(model: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Distribution[T]:
+    """
+    Compute the posterior distribution the possible outputs of a model given its arguments.
+
+    Parameters
+    ----------
+    model: Callable[P, T]
+        The model
+    *args: P.args
+        Model arguments
+    **kwargs: P.kwargs
+        Model keywords arguments
+
+    Returns
+    -------
+    Distribution[T]
+        The posterior distribution
+    """
     return _HANDLER.infer(model, *args)
 
 
@@ -78,7 +133,19 @@ class Reject(Exception):
 
 
 class RejectionSampling(Handler):
+    """
+    Rejection sampling.
+    Tries to generate `num_samples` valid samples.
+    If an `assume` raises the `Reject` exception, the inference loops to generate a new sample.
+    """
+
     def __init__(self, num_samples: int = 1000):
+        """
+        Parameters
+        ----------
+        num_samples: int
+            samples size (default 1000)
+        """
         self.num_samples = num_samples
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
@@ -101,13 +168,21 @@ class RejectionSampling(Handler):
                 try:
                     return model(*args, **kwargs)
                 except Reject:
-                    pass
+                    pass  # Retry
 
         samples = [gen() for _ in tqdm(range(self.num_samples))]
         return Empirical(samples)
 
 
 class Enumeration(Handler):
+    """
+    Enumeration.
+    Performs a depth-first search on all possible values for each sample sites.
+    Only works with finite support distributions for `sample`.
+
+    The DFS algorithm requires all sample site to have a unique name.
+    """
+
     def __init__(self):
         self.stack: List[Dict[str, Any]] = []
         self.trace: Dict[str, Any] = {}
@@ -117,7 +192,7 @@ class Enumeration(Handler):
         assert name, "Enumeration inference requires naming sample sites"
         assert isinstance(
             dist, Categorical
-        ), "Enumeration only works with Categorical distributions"
+        ), "Enumeration only works with Categorical (finite support) distributions"
         if not self.stack:
             # Empty stack: Add all possible values to the stack
             self.stack = [{name: (v, w)} for v, w in dist.support()]
@@ -149,26 +224,38 @@ class Enumeration(Handler):
     ) -> Categorical[T]:
         def gen():  # Generate one value
             while True:
-                self.score = 0
-                self.trace = {}
+                self.score = 0  # Reset the score
+                self.trace = {}  # Reset the trace
                 try:
-                    v, w = model(*args, **kwargs), self.score
-                    self.stack.pop(0)
+                    v, w = model(*args, **kwargs), self.score  # Run first trace
+                    self.stack.pop(0)  # Remove trace from the stack
                     return v, w
                 except Reject:
-                    self.stack.pop(0)
+                    self.stack.pop(0)  # Drop impossible trace
 
-        values = []
-        scores = []
-        v, w = gen()
-        while self.stack:
-            values.append(v)
-            scores.append(w)
-        return Categorical(values, scores)
+        res = [gen()]  # First run to initialize the stack
+        while self.stack:  # Explore remaining traces
+            res.append(gen())
+
+        values, scores = zip(*res)
+        return Categorical(list(values), list(scores))
 
 
 class ImportanceSampling(Handler):
+    """
+    Importance sampling.
+    Launches a set of `num_particles` independent executions (the particles).
+    Each particles returns a sample for the output and a score.
+    All results are gathered into a Categorical distribution.
+    """
+
     def __init__(self, num_particles: int = 1000):
+        """
+        Parameters
+        ----------
+        num_particles: int
+            number of particles (default 1000)
+        """
         self.num_particles = num_particles
         self.id = 0
         self.scores = [0.0 for _ in range(num_particles)]
@@ -190,7 +277,28 @@ class ImportanceSampling(Handler):
 
 
 class MCMC(Handler):
+    """
+    Single-Site Markov Chain Monte Carlo (MCMC).
+    Tries to generate `num_samples` valid samples.
+    At each step:
+    - Pick a sample site `regen` at random
+    - For each sample site, reuse previous values (!= regen)
+    - Log the score of all observation
+    - Compare the scores of the new and the previous trace
+    - Accept or reject with Metropolis-Hasting
+    """
+
     def __init__(self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1):
+        """
+        Parameters
+        ----------
+        num_samples: int
+            samples size (default 1000)
+        warmups: int
+            initial iterations before collecting samples, wait convergence (default 0)
+        thinning: int
+            fraction of samples to keep, avoid autocorrelation (default 1)
+        """
         self.num_samples = num_samples
         self.warmups = warmups
         self.thinning = thinning
@@ -259,6 +367,13 @@ class MCMC(Handler):
 
 
 class SSM(ABC, Generic[P, T]):
+    """
+    Abstract class for State-Space Models.
+    These models are state machine characterized by a transition function `step`.
+
+    The SMC inference only work on SSM instances.
+    """
+
     @abstractmethod
     def __init__(self):
         pass
@@ -269,8 +384,13 @@ class SSM(ABC, Generic[P, T]):
 
 
 class SMC(ImportanceSampling):
-    # Model must be expressed as a state machine (SSM).
-    # Resample at each step
+    """
+    Sequential Monte-Carlo.
+
+    Model must be expressed as a state machine (SSM).
+    Similar to Importance sampling, but particles are resampled after each step.
+    """
+
     def resample(self, particles: List[SSM[P, T]]) -> List[SSM[P, T]]:
         d = Categorical(particles, self.scores)
         return [

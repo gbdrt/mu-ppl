@@ -1,7 +1,5 @@
 import numpy as np
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume
-from mu_ppl.distributions import Uniform, Bernoulli, Empirical
+from mu_ppl import *
 import matplotlib.pyplot as plt
 
 
@@ -18,7 +16,7 @@ def canabis(yes, total):
     return p
 
 
-with inference.RejectionSampling(num_samples=100):
+with RejectionSampling(num_samples=100):
     dist: Empirical[float] = infer(canabis, 160, 200)  # type: ignore
 
 
@@ -30,8 +28,8 @@ def soldier():
     return smoke
 
 
-with inference.RejectionSampling(num_samples=1000):
+with RejectionSampling(num_samples=1000):
     dist: Empirical[float] = infer(soldier)  # type: ignore
-    dist.hist()
+    viz(dist)
     plt.show()
     print(dist.stats())

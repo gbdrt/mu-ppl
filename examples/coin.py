@@ -1,7 +1,5 @@
 from typing import List
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Uniform, Bernoulli, Empirical, Categorical
+from mu_ppl import *
 import matplotlib.pyplot as plt
 
 
@@ -14,22 +12,22 @@ def coin(obs: List[int]) -> float:
 
 print(coin([0, 1]))
 
-with inference.RejectionSampling(num_samples=10):
-    dist1 = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+with RejectionSampling(num_samples=10):
+    dist1: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist1.stats())
-    dist1.hist()
+    viz(dist1)
     plt.show()
 
 
-with inference.ImportanceSampling(num_particles=10000):
-    dist2: Categorical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+with ImportanceSampling(num_particles=10000):
+    dist2: Categorical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist2.stats())
-    dist2.plot()
+    viz(dist2)
     plt.show()
 
 
-with inference.MCMC(num_samples=2000, warmups=1000, thinning=2):
+with MCMC(num_samples=2000, warmups=1000, thinning=2):
     dist3: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist3.stats())
-    dist3.hist()
+    viz(dist3)
     plt.show()

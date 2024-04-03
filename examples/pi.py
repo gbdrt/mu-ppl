@@ -1,7 +1,5 @@
 from typing import Tuple
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume
-from mu_ppl.distributions import Uniform, Empirical
+from mu_ppl import *
 import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore
 
@@ -14,7 +12,7 @@ def pi() -> Tuple[float, float]:
     return (x, y)
 
 
-with inference.RejectionSampling(num_samples=1000):
+with RejectionSampling(num_samples=1000):
     dist: Empirical[Tuple[float, float]] = infer(pi)  # type: ignore
     x, y = zip(*dist.samples)
     sns.scatterplot(x=x, y=y)

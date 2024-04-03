@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, Tuple
+from typing import TypeVar, Generic, List, Tuple, ParamSpec
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -18,19 +18,61 @@ T = TypeVar("T")
 class Distribution(ABC, Generic[T]):
     @abstractmethod
     def sample(self) -> T:
+        """
+        Draw a sample from the distribution.
+
+        Returns
+        -------
+        T:
+            A sample from the Distribution[T]
+        """
         pass
 
     @abstractmethod
     def log_prob(self, x: T) -> float:
+        """
+        Compute the log probability of the argument (logpdf for continuous distribution, logpmf for discrete distribution).
+
+        Parameters
+        ----------
+        x: T
+            Value in the definition domain of the distribution
+
+        Returns
+        -------
+        float:
+            Log probability of the value `x`
+        """
         pass
 
     @abstractmethod
     def stats(self) -> Tuple[float, float]:
+        """
+        Compute basic stats of the distribution
+
+        Returns
+        -------
+        Tuple[float, float]:
+            mean and stddev
+        """
         pass
 
 
 class Categorical(Distribution[T]):
+    """
+    Categorical distribution, i.e., finite support distribution where values can be of arbitrary type.
+    """
+
     def __init__(self, values: List[T], logits: List[float]):
+        """
+        Parameters
+        ----------
+        values: List[T]
+            List of possible values
+        logits: List[float]
+            scores associated to each value (log scale).
+            The length of values and logits must be the same.
+        """
         assert len(values) == len(logits)
         self.values = values
         self.logits = logits
@@ -38,6 +80,9 @@ class Categorical(Distribution[T]):
         self.probs = np.exp(logits - lse)
 
     def shrink(self):
+        """
+        Remove duplicate values.
+        """
         res = {}
         for v, w in zip(self.values, self.probs):
             if v in res:
@@ -49,6 +94,14 @@ class Categorical(Distribution[T]):
         self.logits = np.log(self.probs)
 
     def support(self) -> List[Tuple[T, float]]:
+        """
+        Returns the support of the distribution.
+
+        Returns
+        -------
+        List[Tuple[T, float]]
+            A list of pairs (value, proba)
+        """
         return list(zip(self.values, self.probs))
 
     def sample(self) -> T:
@@ -66,16 +119,19 @@ class Categorical(Distribution[T]):
         std = np.sqrt(np.cov(values, aweights=self.probs)).item()
         return (mean, std)
 
-    def plot(self, **kwargs):
-        plt.plot(self.values, self.probs, marker=".", linestyle="", **kwargs)
-
-    def hist(self, **kwargs):
-        self.shrink()
-        sns.barplot(x=self.values, y=self.probs, errorbar=None)
-
 
 class Empirical(Distribution[T]):
+    """
+    Empirical distribution, i.e., a simple list of samples.
+    """
+
     def __init__(self, samples: List[T]):
+        """
+        Parameters
+        ----------
+        samples: List[T]
+            List of samples
+        """
         self.samples = samples
 
     def sample(self) -> T:
@@ -89,12 +145,19 @@ class Empirical(Distribution[T]):
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
 
-    def hist(self, **kwargs):
-        sns.histplot(self.samples, kde=True, stat="probability", **kwargs)
-
 
 class Dirac(Categorical[T]):
+    """
+    Dirac distribution. Only defined on one value.
+    """
+
     def __init__(self, v: T):
+        """
+        Parameters
+        ----------
+        v: T
+            Parameter of the Dirac distribution
+        """
         self.v = v
 
     def support(self) -> List[Tuple[T, float]]:
@@ -112,7 +175,17 @@ class Dirac(Categorical[T]):
 
 
 class Bernoulli(Categorical[int]):
+    """
+    Bernoulli distribution.
+    """
+
     def __init__(self, p: float):
+        """
+        Parameters
+        ----------
+        p: float
+            Success probability (0 <= p <= 1)
+        """
         assert 0 <= p <= 1
         self.p = p
 
@@ -130,7 +203,19 @@ class Bernoulli(Categorical[int]):
 
 
 class Binomial(Distribution[int]):
+    """
+    Binomial distribution.
+    """
+
     def __init__(self, n: int, p: float):
+        """
+        Parameters
+        ----------
+        n: int
+            Number of trials (0 < n)
+        p: float
+            Success probability (0 <= p <= 1)
+        """
         assert n > 0
         assert 0 <= p <= 1
         self.n = n
@@ -147,7 +232,19 @@ class Binomial(Distribution[int]):
 
 
 class Uniform(Distribution[float]):
+    """
+    Uniform (continuous) distribution.
+    """
+
     def __init__(self, a: float, b: float):
+        """
+        Parameters
+        ----------
+        a: float
+            Interval lower bound
+        b: float
+            Interval upper bound (a <= b)
+        """
         assert a <= b
         self.a = a
         self.b = b
@@ -163,7 +260,19 @@ class Uniform(Distribution[float]):
 
 
 class Gaussian(Distribution[float]):
+    """
+    Gaussian distribution.
+    """
+
     def __init__(self, mu: float, sigma: float):
+        """
+        Parameters
+        ----------
+        mu: float
+            mean
+        sigma: float
+            scale (sigma > 0)
+        """
         assert sigma > 0
         self.mu = mu
         self.sigma = sigma
@@ -179,6 +288,19 @@ class Gaussian(Distribution[float]):
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
+    """
+    Split a list of distribution over list into the list of marginal distributions.
+
+    Parameters
+    ----------
+    dist: Distribution[List[T]]
+        A distribution over lists of values
+
+    Returns
+    -------
+    List[Distribution[T]]
+        A list of distributions of values
+    """
     match dist:
         case Categorical():
             return [
@@ -188,3 +310,20 @@ def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
             return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case _:
             raise RuntimeError("We can only split discrete or empirical distributions")
+
+
+def viz(dist: Distribution[float], **kwargs):
+    """
+    Visualize a distribution over real numbers
+    """
+    match dist:
+        case Categorical():
+            dist.shrink()
+            if len(dist.values) < 100:
+                sns.barplot(x=dist.values, y=dist.probs, errorbar=None, **kwargs)
+            else:
+                plt.plot(dist.values, dist.probs, marker=".", linestyle="", **kwargs)
+        case Empirical():
+            sns.histplot(dist.samples, kde=True, stat="probability", **kwargs)
+        case _:
+            assert False, f"No viz available for {dist}"

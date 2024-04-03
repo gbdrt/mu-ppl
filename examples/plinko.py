@@ -1,6 +1,4 @@
-import numpy as np
-from mu_ppl import sample
-from mu_ppl.distributions import Bernoulli
+from mu_ppl import *
 import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore
 

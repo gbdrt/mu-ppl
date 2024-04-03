@@ -1,6 +1,4 @@
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Uniform, Binomial, Categorical
+from mu_ppl import *
 import matplotlib.pyplot as plt
 
 
@@ -17,8 +15,8 @@ def laplace() -> float:
     return p
 
 
-with inference.ImportanceSampling(num_particles=1000):
+with ImportanceSampling(num_particles=1000):
     dist: Categorical[float] = infer(laplace)  # type: ignore
     print(dist.stats())
-    dist.plot()
+    viz(dist)
     plt.show()

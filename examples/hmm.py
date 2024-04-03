@@ -1,11 +1,9 @@
 from typing import Iterable, List
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Gaussian, split
+from mu_ppl import *
 import numpy as np
 
 
-class HMM(inference.SSM):
+class HMM(SSM):
     def __init__(self):
         self.cpt = 0
         self.x = sample(Gaussian(0, 1), name="x_0")
@@ -27,21 +25,21 @@ def model(data: Iterable[float]) -> List[float]:
 
 data = np.arange(20)
 
-with inference.ImportanceSampling(num_particles=1000):
+with ImportanceSampling(num_particles=1000):
     dist = infer(model, data)
     means = np.array([d.stats()[0] for d in split(dist)])
     mse = np.sum((means - data) ** 2) / len(data)
     print(f"Importance Sampling: {mse}")
 
-with inference.MCMC(num_samples=1000, warmups=1000):
+with MCMC(num_samples=1000, warmups=1000):
     dist = infer(model, data)
     means = np.array([d.stats()[0] for d in split(dist)])
     mse = np.sum((means - data) ** 2) / len(data)
     print(f"MCMC: {mse}")
 
 
-with inference.SMC(num_particles=1000) as infer:
-    dists = infer.infer_stream(HMM, data)  # type: ignore
+with SMC(num_particles=1000) as smc:
+    dists = smc.infer_stream(HMM, data)  # type: ignore
     mse = 0
     for i, d in enumerate(dists):
         mse += (d.stats()[0] - data[i]) ** 2
