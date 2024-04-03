@@ -111,15 +111,15 @@ class Dirac(Categorical[T]):
         return (self.v, 0.0)
 
 
-class Bernoulli(Categorical[float]):
+class Bernoulli(Categorical[int]):
     def __init__(self, p: float):
         assert 0 <= p <= 1
         self.p = p
 
-    def support(self) -> List[Tuple[float, float]]:
+    def support(self) -> List[Tuple[int, float]]:
         return [(0, (1 - self.p)), (1, self.p)]
 
-    def sample(self) -> float:
+    def sample(self) -> int:
         return rand.binomial(1, self.p)
 
     def log_prob(self, x) -> float:
@@ -129,14 +129,14 @@ class Bernoulli(Categorical[float]):
         return stats.bernoulli.stats(self.p)
 
 
-class Binomial(Distribution[float]):
+class Binomial(Distribution[int]):
     def __init__(self, n: int, p: float):
         assert n > 0
         assert 0 <= p <= 1
         self.n = n
         self.p = p
 
-    def sample(self) -> float:
+    def sample(self) -> int:
         return rand.binomial(self.n, self.p)
 
     def log_prob(self, x) -> float:

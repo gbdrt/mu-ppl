@@ -1,7 +1,6 @@
 import numpy as np
-import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe
-from mu_ppl.distributions import Empirical, Uniform, Bernoulli
+from mu_ppl import sample
+from mu_ppl.distributions import Bernoulli
 import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore
 

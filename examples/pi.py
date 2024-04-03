@@ -1,12 +1,12 @@
-import numpy as np
+from typing import Tuple
 import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume, observe
-from mu_ppl.distributions import Uniform, Bernoulli, Empirical
+from mu_ppl import infer, sample, assume
+from mu_ppl.distributions import Uniform, Empirical
 import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore
 
 
-def model():
+def pi() -> Tuple[float, float]:
     x = sample(Uniform(-1, 1))
     y = sample(Uniform(-1, 1))
     d = x**2 + y**2
@@ -15,9 +15,8 @@ def model():
 
 
 with inference.RejectionSampling(num_samples=1000):
-    dist: Empirical[float] = infer(model)  # type: ignore
-    x, y = list(zip(*dist.samples))
+    dist: Empirical[Tuple[float, float]] = infer(pi)  # type: ignore
+    x, y = zip(*dist.samples)
     sns.scatterplot(x=x, y=y)
     plt.axis("scaled")
     plt.show()
-    # print(dist.samples)

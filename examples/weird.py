@@ -1,6 +1,6 @@
 import mu_ppl.inference as inference
-from mu_ppl import infer, sample, observe, assume
-from mu_ppl.distributions import Uniform, Bernoulli, Gaussian
+from mu_ppl import infer, sample, observe
+from mu_ppl.distributions import Bernoulli, Gaussian
 import matplotlib.pyplot as plt
 
 

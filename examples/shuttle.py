@@ -1,7 +1,7 @@
 import numpy as np
 import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume, observe
-from mu_ppl.distributions import Uniform, Binomial, Bernoulli, Gaussian
+from mu_ppl import infer, sample, observe
+from mu_ppl.distributions import Bernoulli, Gaussian
 import matplotlib.pyplot as plt
 from scipy.special import expit  # type: ignore
 

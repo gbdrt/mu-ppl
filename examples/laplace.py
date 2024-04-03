@@ -1,6 +1,5 @@
-import numpy as np
 import mu_ppl.inference as inference
-from mu_ppl import infer, sample, assume, observe
+from mu_ppl import infer, sample, observe
 from mu_ppl.distributions import Uniform, Binomial, Categorical
 import matplotlib.pyplot as plt
 
@@ -12,7 +11,7 @@ b0 = 297018
 f0 = 145159
 
 
-def laplace():
+def laplace() -> float:
     p = sample(Uniform(0, 1))
     observe(Binomial(b0, p), f0)
     return p

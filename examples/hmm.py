@@ -1,5 +1,4 @@
 from typing import Iterable, List
-
 import mu_ppl.inference as inference
 from mu_ppl import infer, sample, observe
 from mu_ppl.distributions import Gaussian, split
