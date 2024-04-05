@@ -18,3 +18,19 @@ with RejectionSampling(num_samples=1000):
     sns.scatterplot(x=x, y=y)
     plt.axis("scaled")
     plt.show()
+
+
+def pi4(n: int) -> float:
+    theta = sample(Uniform(0, 1))
+    for _ in range(n):
+        x = sample(Uniform(0, 1))
+        y = sample(Uniform(0, 1))
+        observe(Bernoulli(theta), x**2 + y**2 <= 1)
+    return theta
+
+
+with ImportanceSampling(num_particles=100):
+    dist2: Categorical[float] = infer(pi4, 1000)  # type: ignore
+    print(dist2.stats())
+    viz(dist2)
+    plt.show()
