@@ -359,13 +359,13 @@ def viz(dist: Distribution[float], **kwargs):
     Visualize a distribution over real numbers
     """
     match dist:
+        case Empirical():
+            sns.histplot(dist.samples, kde=True, stat="probability", **kwargs)
         case Categorical():
             dist.shrink()
             if len(dist.values) < 100:
                 sns.barplot(x=dist.values, y=dist.probs, errorbar=None, **kwargs)
             else:
                 plt.plot(dist.values, dist.probs, marker=".", linestyle="", **kwargs)
-        case Empirical():
-            sns.histplot(dist.samples, kde=True, stat="probability", **kwargs)
         case _:
             assert False, f"No viz available for {dist}"
