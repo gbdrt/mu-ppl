@@ -17,6 +17,7 @@ from .distributions import (
     Dirac,
     Bernoulli,
     Binomial,
+    RandInt,
     Uniform,
     Gaussian,
     split,

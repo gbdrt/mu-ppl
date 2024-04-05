@@ -120,7 +120,7 @@ class Categorical(Distribution[T]):
         return (mean, std)
 
 
-class Empirical(Distribution[T]):
+class Empirical(Categorical[T]):
     """
     Empirical distribution, i.e., a simple list of samples.
     """
@@ -144,6 +144,10 @@ class Empirical(Distribution[T]):
     def stats(self) -> Tuple[float, float]:
         samples = np.array(self.samples)
         return (np.mean(samples), np.std(samples))
+
+    def support(self) -> List[Tuple[T, float]]:
+        n = len(self.samples)
+        return list(zip(self.samples, [1 / n for _ in self.samples]))
 
 
 class Dirac(Categorical[T]):
@@ -231,6 +235,41 @@ class Binomial(Distribution[int]):
         return stats.binom.stats(self.n, self.p)
 
 
+class RandInt(Categorical[int]):
+    """
+    Uniform distribution over a range of integers.
+    """
+
+    def __init__(self, a, b):
+        """
+        Parameters
+        ----------
+        a: int
+            Interval lower bound
+        b: int
+            Interval upper bound (a <= b)
+        """
+        assert a <= b
+        self.a = a
+        self.b = b
+
+    def sample(self) -> int:
+        return rand.randint(self.a, self.b)
+
+    def log_prob(self, v: int) -> float:
+        if self.a <= v <= self.b:
+            return -np.log(self.b - self.a)
+        else:
+            return -np.inf
+
+    def support(self) -> List[Tuple[int, float]]:
+        n = self.b + 1 - self.a
+        return [(v, 1 / n) for v in range(self.a, self.b + 1)]
+
+    def stats(self) -> Tuple[float, float]:
+        return stats.randint.stats(self.a, self.b)
+
+
 class Uniform(Distribution[float]):
     """
     Uniform (continuous) distribution.
@@ -249,13 +288,16 @@ class Uniform(Distribution[float]):
         self.a = a
         self.b = b
 
-    def sample(self):
+    def sample(self) -> float:
         return rand.uniform(self.a, self.b)
 
     def log_prob(self, v: float) -> float:
-        return 1.0
+        if self.a <= v <= self.b:
+            return -np.log(self.b - self.a)
+        else:
+            return -np.inf
 
-    def stats(self):
+    def stats(self) -> Tuple[float, float]:
         return stats.uniform.stats(self.a, self.b)
 
 
