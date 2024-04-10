@@ -1,7 +1,6 @@
 from typing import Tuple
 from mu_ppl import *
 import matplotlib.pyplot as plt
-import seaborn as sns  # type: ignore
 
 
 def pi() -> bool:
@@ -12,7 +11,7 @@ def pi() -> bool:
 
 
 with RejectionSampling(num_samples=1000):
-    dist: Empirical[bool] = infer(pi)  # type: ignore
+    dist: Empirical[float] = infer(pi)  # type: ignore
     viz(dist)
     plt.show()
 

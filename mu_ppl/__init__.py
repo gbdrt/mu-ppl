@@ -1,6 +1,7 @@
 from .inference import (
     sample,
     assume,
+    factor,
     observe,
     infer,
     RejectionSampling,

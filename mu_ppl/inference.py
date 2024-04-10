@@ -46,10 +46,13 @@ class Handler:
         return dist.sample()  # Draw sample
 
     def assume(self, pred: bool):
-        pass  # Ignore
+        assert False, "Not implemented"  # Ignore
+
+    def factor(self, weight: float, name: Optional[str] = None):
+        assert False, "Not implemented"  # Ignore
 
     def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
-        pass  # Ignore
+        assert False, "Not implemented"  # Ignore
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
@@ -89,6 +92,20 @@ def assume(pred: bool):
         Boolean condition
     """
     return _HANDLER.assume(pred)
+
+
+def factor(weight: float, name: Optional[str] = None):
+    """
+    Add a factor to the log probability of the model
+
+    Parameters
+    ----------
+    weight: float
+        Value to be added
+    name: Optional[str]
+        Unique name (required by some inference)
+    """
+    return _HANDLER.factor(weight, name=name)
 
 
 def observe(dist: Distribution[T], value: T, name: Optional[str] = None):
@@ -216,29 +233,31 @@ class Enumeration(Handler):
         if not pred:
             raise Reject
 
+    def factor(self, weight: float, name: Optional[str] = None):
+        self.score += weight  # Update the score
+
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         self.score += dist.log_prob(v)  # Update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Categorical[T]:
-        def gen():  # Generate one value
-            while True:
-                self.score = 0  # Reset the score
-                self.trace = {}  # Reset the trace
-                try:
-                    v, w = model(*args, **kwargs), self.score  # Run first trace
-                    self.stack.pop(0)  # Remove trace from the stack
-                    return v, w
-                except Reject:
-                    self.stack.pop(0)  # Drop impossible trace
+        values: List[T] = []
+        scores: List[float] = []
 
-        res = [gen()]  # First run to initialize the stack
-        while self.stack:  # Explore remaining traces
-            res.append(gen())
+        while True:
+            self.score = 0  # Reset the score
+            self.trace = {}  # Reset the trace
+            try:
+                values.append(model(*args, **kwargs))  # Run the first trace
+                scores.append(self.score)  # log the score
+                self.stack.pop(0)  # Remove trace from the stack
+            except Reject:
+                self.stack.pop(0)  # Drop impossible trace
+            if not self.stack:
+                break
 
-        values, scores = zip(*res)
-        return Categorical(list(values), list(scores))
+        return Categorical(values, scores)
 
 
 class ImportanceSampling(Handler):
@@ -262,6 +281,9 @@ class ImportanceSampling(Handler):
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
+
+    def factor(self, weight: float, name: Optional[str] = None):
+        self.scores[self.id] += weight  # Update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         self.scores[self.id] += dist.log_prob(v)  # Update the score
@@ -316,6 +338,10 @@ class MCMC(Handler):
         self.samples[name] = v  # Store the sample
         self.scores[name] = dist.log_prob(v)
         return v
+
+    def factor(self, weight: float, name: Optional[str] = None):
+        assert name, "MCMC inference requires naming score sites"
+        self.scores[name] += weight  # Update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         assert name, "MCMC inference requires naming observation sites"
