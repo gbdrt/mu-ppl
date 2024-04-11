@@ -10,24 +10,28 @@ def coin(obs: List[int]) -> float:
     return p
 
 
-print(coin([0, 1]))
-
-with RejectionSampling(num_samples=10):
+with RejectionSampling(num_samples=1000):
     dist1: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist1.stats())
-    viz(dist1)
-    plt.show()
+    # viz(dist1)
+    # plt.show()
 
 
 with ImportanceSampling(num_particles=10000):
     dist2: Categorical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist2.stats())
-    viz(dist2)
-    plt.show()
+    # viz(dist2)
+    # plt.show()
 
-
-with MCMC(num_samples=2000, warmups=1000, thinning=2):
+with SimpleMetropolis(num_samples=1000, warmups=10000, thinning=2):
     dist3: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist3.stats())
-    viz(dist3)
-    plt.show()
+    # viz(dist3)
+    # plt.show()
+
+
+with MetropolisHastings(num_samples=2000, warmups=1000, thinning=2):
+    dist4: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
+    print(dist4.stats())
+    # viz(dist4)
+    # plt.show()

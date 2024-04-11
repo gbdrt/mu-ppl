@@ -250,12 +250,12 @@ class Enumeration(Handler):
             self.trace = {}  # Reset the trace
             try:
                 values.append(model(*args, **kwargs))  # Run the first trace
-                scores.append(self.score)  # log the score
+                scores.append(self.score)  # Log the score
                 self.stack.pop(0)  # Remove trace from the stack
             except Reject:
                 self.stack.pop(0)  # Drop impossible trace
             if not self.stack:
-                break
+                break  # No more trace to explore
 
         return Categorical(values, scores)
 
@@ -276,32 +276,93 @@ class ImportanceSampling(Handler):
             number of particles (default 1000)
         """
         self.num_particles = num_particles
-        self.id = 0
-        self.scores = [0.0 for _ in range(num_particles)]
+        self.score = 0
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
 
     def factor(self, weight: float, name: Optional[str] = None):
-        self.scores[self.id] += weight  # Update the score
+        self.score += weight  # Update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.scores[self.id] += dist.log_prob(v)  # Update the score
+        self.score += dist.log_prob(v)  # Update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Categorical[T]:
         values: List[T] = []
+        scores: List[float] = []
         for i in tqdm(range(self.num_particles)):  # Run num_particles executions
-            self.id = i
+            self.score = 0  # Reset the score
             values.append(model(*args, **kwargs))
-        return Categorical(values, self.scores)
+            scores.append(self.score)
+        return Categorical(values, scores)
 
 
-class MCMC(Handler):
+class SimpleMetropolis(Handler):
+    """
+    Multi-Sites Markov Chain Monte Carlo (MCMC).
+    Try to generate `num_samples` valid samples.
+    At each step:
+    - Run the model to generate a sample
+    - Compare the scores of the new and the previous execution
+    - Accept or reject with Metropolis-Hasting
+    """
+
+    def __init__(self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1):
+        """
+        Parameters
+        ----------
+        num_samples: int
+            samples size (default 1000)
+        warmups: int
+            initial iterations before collecting samples, wait convergence (default 0)
+        thinning: int
+            fraction of samples to keep, avoid autocorrelation (default 1)
+        """
+        self.num_samples = num_samples
+        self.warmups = warmups
+        self.thinning = thinning
+        self.score: float = 0  # current score
+
+    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
+        return dist.sample()  # Draw sample
+
+    def factor(self, weight: float, name: Optional[str] = None):
+        self.score += weight  # Update the score
+
+    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
+        self.score += dist.log_prob(v)  # Update the score
+
+    def infer(
+        self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+    ) -> Empirical[T]:
+        samples: List[T] = []
+        new_value = model(*args, **kwargs)  # Generate first sample
+
+        for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
+            samples.append(new_value)  # Store current sample
+            old_score = self.score  # Store current state
+            old_value = new_value  # Store current value
+
+            self.score = 0  # Reset the score
+            new_value = model(*args, **kwargs)  # Generate a candidate
+
+            alpha = np.exp(self.score - old_score)
+            u = np.random.random()
+            if not (u < alpha):
+                new_value = old_value  # Roll back to the previous value
+                self.score = old_score  # Restore previous state
+
+            samples.append(new_value)  # Keep the new trace and the new value
+
+        return Empirical(samples[self.warmups :: self.thinning])
+
+
+class MetropolisHastings(Handler):
     """
     Single-Site Markov Chain Monte Carlo (MCMC).
-    Tries to generate `num_samples` valid samples.
+    Try to generate `num_samples` valid samples.
     At each step:
     - Pick a sample site `regen` at random
     - For each sample site, reuse previous values (!= regen)
@@ -324,10 +385,10 @@ class MCMC(Handler):
         self.num_samples = num_samples
         self.warmups = warmups
         self.thinning = thinning
-        self.trace: List[Any] = []  # log all samples
+
         self.samples: Dict[str, Any] = {}  # samples store
-        self.cache: Dict[str, Any] = {}  # sample cache to be reused
         self.scores: Dict[str, Any] = {}  # score store
+        self.cache: Dict[str, Any] = {}  # sample cache to be reused
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         assert name, "MCMC inference requires naming sample sites"
@@ -365,29 +426,25 @@ class MCMC(Handler):
         samples: List[T] = []
         new_value = model(*args, **kwargs)  # Generate first trace
 
-        for _ in tqdm(range(self.warmups + self.num_samples - 1)):
-            samples.append(new_value)  # Store current sample
+        for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
             old_samples, old_scores = self.samples, self.scores  # Store current state
             old_value = new_value  # Store current value
 
             regen = list(self.samples.keys())[np.random.randint(len(self.samples))]
             self.cache = deepcopy(self.samples)  # Use samples as next cache
             del self.cache[regen]  # force regen to be resampled
-            self.samples = {}  # Reset the samples
-            self.scores = {}  # Reset the scores
-
+            self.samples, self.scores = {}, {}  # Reset the state
             new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
 
-            if np.random.random() < mh(
-                regen, old_samples, old_scores, self.samples, self.scores
-            ):
-                samples.append(new_value)  # Keep the new trace and the new value
-            else:
+            alpha = mh(regen, old_samples, old_scores, self.samples, self.scores)
+            u = np.random.random()
+            if not (u < alpha):
                 new_value = old_value  # Roll back to the previous value
                 self.samples, self.scores = (
                     old_samples,
                     old_scores,
                 )  # Restore previous state
+            samples.append(new_value)
 
         return Empirical(samples[self.warmups :: self.thinning])
 
@@ -417,8 +474,10 @@ class SMC(ImportanceSampling):
     Similar to Importance sampling, but particles are resampled after each step.
     """
 
-    def resample(self, particles: List[SSM[P, T]]) -> List[SSM[P, T]]:
-        d = Categorical(particles, self.scores)
+    def resample(
+        self, particles: List[SSM[P, T]], scores: List[float]
+    ) -> List[SSM[P, T]]:
+        d = Categorical(particles, scores)
         return [
             deepcopy(d.sample()) for _ in range(self.num_particles)
         ]  # Resample a new set of particles
@@ -431,9 +490,10 @@ class SMC(ImportanceSampling):
         ]  # Initialise the particles
         for y in zip(*args):  # At each step
             values: List[T] = []
+            scores: List[float] = []
             for i in range(self.num_particles):
-                self.id = i
+                self.score = 0  # Reset the score
                 values.append(particles[i].step(*y))  # Execute all the particles
-            yield Categorical(values, self.scores)  # Return current distribution
-            particles = self.resample(particles)  # Resample the particles
-            self.scores = [0.0 for _ in range(self.num_particles)]  # Reset the score
+                scores.append(self.score)
+            yield Categorical(values, scores)  # Return current distribution
+            particles = self.resample(particles, scores)  # Resample the particles

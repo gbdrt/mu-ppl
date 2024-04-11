@@ -7,7 +7,8 @@ from .inference import (
     RejectionSampling,
     Enumeration,
     ImportanceSampling,
-    MCMC,
+    SimpleMetropolis,
+    MetropolisHastings,
     SSM,
     SMC,
 )

@@ -344,12 +344,12 @@ def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
         A list of distributions of values
     """
     match dist:
+        case Empirical():
+            return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case Categorical():
             return [
                 Categorical(list(values), dist.logits) for values in zip(*dist.values)
             ]
-        case Empirical():
-            return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case _:
             raise RuntimeError("We can only split discrete or empirical distributions")
 

@@ -45,7 +45,7 @@ def challenger(temps, fails):
     return logistic(a, b, 31)
 
 
-with MCMC(num_samples=2000, warmups=10000, thinning=2):
+with MetropolisHastings(num_samples=2000, warmups=10000, thinning=2):
     dist: Empirical[float] = infer(challenger, temps, fails)  # type: ignore
     viz(dist)
     plt.show()
