@@ -443,7 +443,7 @@ class MetropolisHastings(Handler):
             p_samples, p_scores = self.samples, self.scores  # Store current state
             p_value = new_value  # Store current value
 
-            regen = list(self.samples.keys())[np.random.randint(len(self.samples))]
+            regen = np.random.choice([n for n in self.samples])
             self.cache = deepcopy(self.samples)  # Use samples as next cache
             del self.cache[regen]  # force regen to be resampled
             self.samples, self.scores = {}, {}  # Reset the state
