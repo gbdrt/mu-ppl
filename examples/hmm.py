@@ -35,6 +35,12 @@ with SimpleMetropolis(num_samples=1000, warmups=1000):
     dist = infer(model, data)
     means = np.array([d.stats()[0] for d in split(dist)])
     mse = np.sum((means - data) ** 2) / len(data)
+    print(f"MCMC Simple: {mse}")
+
+with MetropolisHastings(num_samples=1000, warmups=1000):
+    dist = infer(model, data)
+    means = np.array([d.stats()[0] for d in split(dist)])
+    mse = np.sum((means - data) ** 2) / len(data)
     print(f"MCMC: {mse}")
 
 
