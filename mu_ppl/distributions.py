@@ -63,21 +63,16 @@ class Categorical(Distribution[T]):
     Categorical distribution, i.e., finite support distribution where values can be of arbitrary type.
     """
 
-    def __init__(self, values: List[T], logits: List[float]):
+    def __init__(self, pairs: List[Tuple[T, float]]):
         """
         Parameters
         ----------
-        values: List[T]
-            List of possible values
-        logits: List[float]
-            scores associated to each value (log scale).
-            The length of values and logits must be the same.
+        pairs: List[Tuple[T, float]]
+            List of pairs (value, score), where the score is in log scale.
         """
-        assert len(values) == len(logits)
-        self.values = values
-        self.logits = logits
-        lse = logsumexp(logits)
-        self.probs = np.exp(logits - lse)
+        self.values, self.logits = zip(*pairs)
+        lse = logsumexp(self.logits)
+        self.probs = np.exp(self.logits - lse)
 
     def shrink(self):
         """
@@ -102,6 +97,7 @@ class Categorical(Distribution[T]):
         List[Tuple[T, float]]
             A list of pairs (value, proba)
         """
+        self.shrink
         return list(zip(self.values, self.probs))
 
     def sample(self) -> T:
@@ -348,7 +344,8 @@ def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
             return [Empirical(list(samples)) for samples in zip(*dist.samples)]
         case Categorical():
             return [
-                Categorical(list(values), dist.logits) for values in zip(*dist.values)
+                Categorical(list(zip(list(values), dist.logits)))
+                for values in zip(*dist.values)
             ]
         case _:
             raise RuntimeError("We can only split discrete or empirical distributions")

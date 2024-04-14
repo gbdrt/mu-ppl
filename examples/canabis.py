@@ -18,6 +18,7 @@ def canabis(yes, total):
 
 with RejectionSampling(num_samples=100):
     dist: Empirical[float] = infer(canabis, 160, 200)  # type: ignore
+    print(dist.stats())
 
 
 def soldier():

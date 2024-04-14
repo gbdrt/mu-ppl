@@ -8,6 +8,7 @@ from typing import (
     Any,
     Dict,
     Optional,
+    Tuple,
 )
 from abc import ABC, abstractmethod
 import numpy as np
@@ -200,22 +201,22 @@ class Enumeration(Handler):
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Categorical[T]:
-        values: List[T] = []
-        scores: List[float] = []
+        samples: List[Tuple[T, float]] = []
 
         while True:
             self.score = 0  # Reset the score
             self.trace = {}  # Reset the trace
             try:
-                values.append(model(*args, **kwargs))  # Run the first trace
-                scores.append(self.score)  # Log the score
+                samples.append(
+                    (model(*args, **kwargs), self.score)
+                )  # Try the first trace
                 self.stack.pop(0)  # Remove trace from the stack
             except Reject:
                 self.stack.pop(0)  # Drop impossible trace
             if not self.stack:
                 break  # No more trace to explore
 
-        return Categorical(values, scores)
+        return Categorical(samples)
 
 
 class ImportanceSampling(Handler):
@@ -252,13 +253,11 @@ class ImportanceSampling(Handler):
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Categorical[T]:
-        values: List[T] = []
-        scores: List[float] = []
-        for i in tqdm(range(self.num_particles)):  # Run num_particles executions
+        samples: List[Tuple[T, float]] = []
+        for _ in tqdm(range(self.num_particles)):  # Run num_particles executions
             self.score = 0  # Reset the score
-            values.append(model(*args, **kwargs))
-            scores.append(self.score)
-        return Categorical(values, scores)
+            samples.append((model(*args, **kwargs), self.score))
+        return Categorical(samples)
 
 
 class RejectionSampling(Handler):
@@ -415,7 +414,7 @@ class MetropolisHastings(Handler):
     def assume(self, cond: bool, name: Optional[str] = None):
         assert name, "MCMC inference requires naming assume sites"
         if not cond:
-            self.score[name] = -np.inf
+            self.scores[name] = -np.inf
 
     def factor(self, weight: float, name: Optional[str] = None):
         assert name, "MCMC inference requires naming score sites"
@@ -493,7 +492,7 @@ class SMC(ImportanceSampling):
     def resample(
         self, particles: List[SSM[P, T]], scores: List[float]
     ) -> List[SSM[P, T]]:
-        d = Categorical(particles, scores)
+        d = Categorical(list(zip(particles, scores)))
         return [
             deepcopy(d.sample()) for _ in range(self.num_particles)
         ]  # Resample a new set of particles
@@ -511,5 +510,5 @@ class SMC(ImportanceSampling):
                 self.score = 0  # Reset the score
                 values.append(particles[i].step(*y))  # Execute all the particles
                 scores.append(self.score)
-            yield Categorical(values, scores)  # Return current distribution
+            yield Categorical(list(zip(values, scores)))  # Return current distribution
             particles = self.resample(particles, scores)  # Resample the particles

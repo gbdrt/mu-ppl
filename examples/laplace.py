@@ -27,9 +27,9 @@ def laplace(f1, g1, f2, g2) -> float:
     return q > p
 
 
-with RejectionSampling(num_samples=100):
-    dist: Empirical[float] = infer(laplace, fp, gp, fl, gl)  # type: ignore
-    print(dist.stats())
+# with RejectionSampling(num_samples=100):
+#     dist: Empirical[float] = infer(laplace, fp, gp, fl, gl)  # type: ignore
+#     print(dist.stats())
 
 # with ImportanceSampling(num_particles=100000):
 #     dist: Categorical[float] = infer(laplace, fp, gp, fl, gl)  # type: ignore
@@ -37,8 +37,8 @@ with RejectionSampling(num_samples=100):
 #     viz(dist)
 #     plt.show()
 
-# with MetropolisHastings(num_samples=1000, warmups=5000, thinning=2):
-#     dist: Empirical[float] = infer(laplace, fp, gp, fl, gl)  # type: ignore
-#     print(dist.stats())
-#     viz(dist)
-#     plt.show()
+with MetropolisHastings(num_samples=1000, warmups=5000, thinning=2):
+    dist: Empirical[float] = infer(laplace, fp, gp, fl, gl)  # type: ignore
+    print(dist.stats())
+    viz(dist)
+    plt.show()
