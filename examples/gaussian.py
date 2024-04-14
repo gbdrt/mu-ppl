@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from mu_ppl import *
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Ellipse
 import arviz as az
@@ -50,7 +50,7 @@ ax.set_yticklabels([])
 ax.tick_params(left=False, bottom=False)
 ax.axhline(0, color="black", linewidth=1.5)
 ax.axvline(0, color="black", linewidth=1.5)
-ax.axes.set_aspect("equal") # type: ignore
+ax.axes.set_aspect("equal")  # type: ignore
 
 
 # np.random.seed(23)
@@ -69,7 +69,7 @@ np.random.seed(2)
 ax.set_xlim((-1.5, 7.1))
 ax.set_ylim((-1.1, 5.9))
 ax.set_xticks(np.arange(-1, 7))
-ax.axes.set_aspect("equal") # type: ignore
+ax.axes.set_aspect("equal")  # type: ignore
 
 with MetropolisHastings(num_samples=1000):
     dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
