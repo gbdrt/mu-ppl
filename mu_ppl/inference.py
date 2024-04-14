@@ -303,7 +303,7 @@ class RejectionSampling(Handler):
                 self.score = 0  # Reset the score
                 value = model(*args, **kwargs)
                 u = np.random.random()
-                if self.score > self.max_score + np.log(u):
+                if u <= np.exp(self.score - self.max_score):
                     return value  # accept
 
         samples = [gen() for _ in tqdm(range(self.num_samples))]
