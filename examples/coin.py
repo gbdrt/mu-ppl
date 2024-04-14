@@ -10,9 +10,10 @@ def coin(obs: List[int]) -> float:
     return p
 
 
-with RejectionSampling(num_samples=1000):
+with RejectionSampling(num_samples=100):
     dist1: Empirical[float] = infer(coin, [0, 0, 0, 0, 0, 0, 0, 0, 1, 1])  # type: ignore
     print(dist1.stats())
+    print(len(dist1.samples))
     # viz(dist1)
     # plt.show()
 

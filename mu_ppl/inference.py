@@ -156,14 +156,18 @@ class RejectionSampling(Handler):
     If an `assume` raises the `Reject` exception, the inference loops to generate a new sample.
     """
 
-    def __init__(self, num_samples: int = 1000):
+    def __init__(self, num_samples: int = 1000, max_score: float = 0):
         """
         Parameters
         ----------
         num_samples: int
             samples size (default 1000)
+        max_score: float
+            Maximum possible score (default 0)
         """
         self.num_samples = num_samples
+        self.max_score: float = max_score
+        self.score: float = 0
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # Draw sample
@@ -172,18 +176,26 @@ class RejectionSampling(Handler):
         if not cond:
             raise Reject
 
+    def factor(self, weight: float, name: Optional[str] = None):
+        self.score += weight
+
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        x = dist.sample()  # Draw a sample
-        if x != v:
-            raise Reject  # Reject if it's not the observation
+        self.score += dist.log_prob(v)
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
+        samples: List[T] = []
+
         def gen():  # Generate one sample
             while True:
+                self.score = 0  # Reset the score
                 try:
-                    return model(*args, **kwargs)
+                    value = model(*args, **kwargs)
+                    u = np.random.random()
+                    if self.score <= self.max_score + np.log(u):
+                        raise Reject
+                    return value  # accept
                 except Reject:
                     pass  # Retry
 
@@ -334,7 +346,7 @@ class SimpleMetropolis(Handler):
 
     def assume(self, cond: bool, name: Optional[str] = None):
         if not cond:
-            self.score += -np.inf
+            raise Reject
 
     def factor(self, weight: float, name: Optional[str] = None):
         self.score += weight  # Update the score
@@ -349,19 +361,19 @@ class SimpleMetropolis(Handler):
         new_value = model(*args, **kwargs)  # Generate first sample
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            samples.append(new_value)  # Store current sample
             old_score = self.score  # Store current state
             old_value = new_value  # Store current value
-
             self.score = 0  # Reset the score
-            new_value = model(*args, **kwargs)  # Generate a candidate
 
-            alpha = np.exp(self.score - old_score)
-            u = np.random.random()
-            if not (u < alpha):
+            try:
+                new_value = model(*args, **kwargs)  # Generate a candidate
+                alpha = np.exp(self.score - old_score)
+                u = np.random.random()
+                if not (u < alpha):
+                    raise Reject
+            except Reject:
                 new_value = old_value  # Roll back to the previous value
                 self.score = old_score  # Restore previous state
-
             samples.append(new_value)  # Keep the new trace and the new value
 
         return Empirical(samples[self.warmups :: self.thinning])
@@ -410,7 +422,8 @@ class MetropolisHastings(Handler):
 
     def assume(self, cond: bool, name: Optional[str] = None):
         assert name, "MCMC inference requires naming assume sites"
-        self.scores[name] = -np.inf if not cond else 0
+        if not cond:
+            raise Reject
 
     def factor(self, weight: float, name: Optional[str] = None):
         assert name, "MCMC inference requires naming score sites"
@@ -442,16 +455,18 @@ class MetropolisHastings(Handler):
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
             p_samples, p_scores = self.samples, self.scores  # Store current state
             p_value = new_value  # Store current value
-
             regen = np.random.choice([n for n in self.samples])
             self.cache = deepcopy(self.samples)  # Use samples as next cache
             del self.cache[regen]  # force regen to be resampled
             self.samples, self.scores = {}, {}  # Reset the state
-            new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
 
-            alpha = self.mh(regen, p_samples, p_scores)
-            u = np.random.random()
-            if not (u < alpha):
+            try:
+                new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
+                alpha = self.mh(regen, p_samples, p_scores)
+                u = np.random.random()
+                if not (u < alpha):
+                    raise Reject
+            except Reject:
                 new_value = p_value  # Roll back to the previous value
                 self.samples, self.scores = (
                     p_samples,

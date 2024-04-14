@@ -9,7 +9,7 @@ import scipy.stats as stats  # type: ignore
 import seaborn as sns  # type: ignore
 import matplotlib.pyplot as plt
 
-sns.set_theme()
+# sns.set_theme()
 
 
 T = TypeVar("T")
