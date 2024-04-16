@@ -28,7 +28,7 @@ class Handler:
     A handler interprets probabilistic constructs inside a context manager.
     We can try several inference algorithms on the same model.
     The implementation of each constructs depends on the inference algorithm.
-    The default handler simply draw a sample from the model and ignore conditionning operators (`assume`, `observe`).
+    The default handler simply draw a sample from the model and ignore conditioning operators (`assume`, `observe`).
     """
 
     def __enter__(self):
@@ -42,16 +42,16 @@ class Handler:
         _HANDLER = self.old_handler
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # Draw sample
+        return dist.sample()  # draw sample
 
     def assume(self, cond: bool, name: Optional[str] = None):
-        pass  # Ignore
+        pass  # ignore
 
     def factor(self, weight: float, name: Optional[str] = None):
-        pass  # Ignore
+        pass  # ignore
 
     def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
-        pass  # Ignore
+        pass  # ignore
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
@@ -170,22 +170,22 @@ class Enumeration(Handler):
             dist, Categorical
         ), "Enumeration only works with Categorical (finite support) distributions"
         if not self.stack:
-            # Empty stack: Add all possible values to the stack
+            # empty stack: Add all possible values to the stack
             self.stack = [{name: (v, w)} for v, w in dist.support()]
         if not name in self.stack[0]:
-            # New sample site
-            self.stack = [  # Add all possible traces starting with self.trace
+            # new sample site
+            self.stack = [  # add all possible traces starting with self.trace
                 {**d, name: (v, w)}
                 for d in self.stack
                 for (v, w) in dist.support()
                 if self.trace == d
-            ] + [  # Keep all other traces
+            ] + [  # keep all other traces
                 d for d in self.stack if self.trace != d
             ]
 
-        v, w = self.stack[0][name]  # Pick the first trace
-        self.trace[name] = v, w  # Record the current choice in self.trace
-        self.score += np.log(w)  # Update the score
+        v, w = self.stack[0][name]  # pick the first trace
+        self.trace[name] = v, w  # record the current choice in self.trace
+        self.score += np.log(w)  # update the score
         return v
 
     def assume(self, cond: bool, name: Optional[str] = None):
@@ -193,10 +193,10 @@ class Enumeration(Handler):
             raise Reject
 
     def factor(self, weight: float, name: Optional[str] = None):
-        self.score += weight  # Update the score
+        self.score += weight  # update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.score += dist.log_prob(v)  # Update the score
+        self.score += dist.log_prob(v)  # update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
@@ -204,17 +204,17 @@ class Enumeration(Handler):
         samples: List[Tuple[T, float]] = []
 
         while True:
-            self.score = 0  # Reset the score
-            self.trace = {}  # Reset the trace
+            self.score = 0  # reset the score
+            self.trace = {}  # reset the trace
             try:
                 samples.append(
                     (model(*args, **kwargs), self.score)
-                )  # Try the first trace
-                self.stack.pop(0)  # Remove trace from the stack
+                )  # try the first trace
+                self.stack.pop(0)  # remove trace from the stack
             except Reject:
-                self.stack.pop(0)  # Drop impossible trace
+                self.stack.pop(0)  # drop impossible trace
             if not self.stack:
-                break  # No more trace to explore
+                break  # no more trace to explore
 
         return Categorical(samples)
 
@@ -238,24 +238,24 @@ class ImportanceSampling(Handler):
         self.score: float = 0
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # Draw sample
+        return dist.sample()  # draw sample
 
     def assume(self, cond: bool, name: Optional[str] = None):
         if not cond:
             self.score += -np.inf
 
     def factor(self, weight: float, name: Optional[str] = None):
-        self.score += weight  # Update the score
+        self.score += weight  # update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.score += dist.log_prob(v)  # Update the score
+        self.score += dist.log_prob(v)  # update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Categorical[T]:
         samples: List[Tuple[T, float]] = []
-        for _ in tqdm(range(self.num_particles)):  # Run num_particles executions
-            self.score = 0  # Reset the score
+        for _ in tqdm(range(self.num_particles)):  # run num_particles executions
+            self.score = 0  # reset the score
             samples.append((model(*args, **kwargs), self.score))
         return Categorical(samples)
 
@@ -281,7 +281,7 @@ class RejectionSampling(Handler):
         self.score: float = 0
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # Draw sample
+        return dist.sample()  # draw sample
 
     def assume(self, cond: bool, name: Optional[str] = None):
         if not cond:
@@ -298,9 +298,9 @@ class RejectionSampling(Handler):
     ) -> Empirical[T]:
         samples: List[T] = []
 
-        def gen():  # Generate one sample
+        def gen():  # generate one sample
             while True:
-                self.score = 0  # Reset the score
+                self.score = 0  # reset the score
                 value = model(*args, **kwargs)
                 u = np.random.random()
                 if u <= np.exp(self.score - self.max_score):
@@ -337,35 +337,35 @@ class SimpleMetropolis(Handler):
         self.score: float = 0  # current score
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # Draw sample
+        return dist.sample()  # draw sample
 
     def assume(self, cond: bool, name: Optional[str] = None):
         if not cond:
             self.score += -np.inf
 
     def factor(self, weight: float, name: Optional[str] = None):
-        self.score += weight  # Update the score
+        self.score += weight  # update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.score += dist.log_prob(v)  # Update the score
+        self.score += dist.log_prob(v)  # update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
         samples: List[T] = []
-        new_value = model(*args, **kwargs)  # Generate first sample
+        new_value = model(*args, **kwargs)  # generate first sample
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            old_score = self.score  # Store current state
-            old_value = new_value  # Store current value
-            self.score = 0  # Reset the score
-            new_value = model(*args, **kwargs)  # Generate a candidate
+            old_score = self.score  # store current state
+            old_value = new_value  # store current value
+            self.score = 0  # reset the score
+            new_value = model(*args, **kwargs)  # generate a candidate
             alpha = np.exp(self.score - old_score)
             u = np.random.random()
             if not (u < alpha):
-                new_value = old_value  # Roll back to the previous value
-                self.score = old_score  # Restore previous state
-            samples.append(new_value)  # Keep the new trace and the new value
+                new_value = old_value  # roll back to the previous value
+                self.score = old_score  # restore previous state
+            samples.append(new_value)  # keep the new trace and the new value
 
         return Empirical(samples[self.warmups :: self.thinning])
 
@@ -403,11 +403,11 @@ class MetropolisHastings(Handler):
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         assert name, "MCMC inference requires naming sample sites"
-        try:  # Reuse if possible
+        try:  # reuse if possible
             v = self.cache[name]
         except KeyError:
-            v = dist.sample()  # Otherwise draw a sample
-        self.samples[name] = v  # Store the sample
+            v = dist.sample()  # otherwise draw a sample
+        self.samples[name] = v  # store the sample
         self.scores[name] = dist.log_prob(v)
         return v
 
@@ -418,11 +418,11 @@ class MetropolisHastings(Handler):
 
     def factor(self, weight: float, name: Optional[str] = None):
         assert name, "MCMC inference requires naming score sites"
-        self.scores[name] = weight  # Update the score
+        self.scores[name] = weight  # update the score
 
     def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
         assert name, "MCMC inference requires naming observe sites"
-        self.scores[name] = dist.log_prob(v)  # Update the score
+        self.scores[name] = dist.log_prob(v)  # update the score
 
     def mh(
         self, regen: str, old_samples: Dict[str, Any], old_scores: Dict[str, float]
@@ -441,24 +441,24 @@ class MetropolisHastings(Handler):
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
         samples: List[T] = []
-        new_value = model(*args, **kwargs)  # Generate first trace
+        new_value = model(*args, **kwargs)  # generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            p_samples, p_scores = self.samples, self.scores  # Store current state
-            p_value = new_value  # Store current value
+            p_samples, p_scores = self.samples, self.scores  # store current state
+            p_value = new_value  # store current value
             regen = np.random.choice([n for n in self.samples])
-            self.cache = deepcopy(self.samples)  # Use samples as next cache
+            self.cache = deepcopy(self.samples)  # use samples as next cache
             del self.cache[regen]  # force regen to be resampled
-            self.samples, self.scores = {}, {}  # Reset the state
-            new_value = model(*args, **kwargs)  # Regen a new trace from regen_from
+            self.samples, self.scores = {}, {}  # reset the state
+            new_value = model(*args, **kwargs)  # regen a new trace from regen_from
             alpha = self.mh(regen, p_samples, p_scores)
             u = np.random.random()
             if not (u < alpha):
-                new_value = p_value  # Roll back to the previous value
+                new_value = p_value  # roll back to the previous value
                 self.samples, self.scores = (
                     p_samples,
                     p_scores,
-                )  # Restore previous state
+                )  # restore previous state
             samples.append(new_value)
 
         return Empirical(samples[self.warmups :: self.thinning])
@@ -495,20 +495,20 @@ class SMC(ImportanceSampling):
         d = Categorical(list(zip(particles, scores)))
         return [
             deepcopy(d.sample()) for _ in range(self.num_particles)
-        ]  # Resample a new set of particles
+        ]  # resample a new set of particles
 
     def infer_stream(
         self, ssm: type[SSM[P, T]], *args: Iterator[P.args]
     ) -> Iterator[Categorical[T]]:
         particles: List[SSM[P, T]] = [
             ssm() for _ in range(self.num_particles)
-        ]  # Initialise the particles
-        for y in zip(*args):  # At each step
+        ]  # initialise the particles
+        for y in zip(*args):  # at each step
             values: List[T] = []
             scores: List[float] = []
             for i in range(self.num_particles):
-                self.score = 0  # Reset the score
-                values.append(particles[i].step(*y))  # Execute all the particles
+                self.score = 0  # reset the score
+                values.append(particles[i].step(*y))  # execute all the particles
                 scores.append(self.score)
-            yield Categorical(list(zip(values, scores)))  # Return current distribution
-            particles = self.resample(particles, scores)  # Resample the particles
+            yield Categorical(list(zip(values, scores)))  # return current distribution
+            particles = self.resample(particles, scores)  # resample the particles
