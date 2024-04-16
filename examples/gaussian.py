@@ -52,6 +52,7 @@ ax.axhline(0, color="black", linewidth=1.5)
 ax.axvline(0, color="black", linewidth=1.5)
 ax.axes.set_aspect("equal")  # type: ignore
 
+## Plot random walks
 
 # np.random.seed(23)
 # with SimpleMetropolis(num_samples=7000):
@@ -65,19 +66,42 @@ ax.axes.set_aspect("equal")  # type: ignore
 #     plt.savefig('2d_gaussian_simple_mh.pdf', format='pdf')
 #     plt.show()
 
-np.random.seed(2)
-ax.set_xlim((-1.5, 7.1))
-ax.set_ylim((-1.1, 5.9))
-ax.set_xticks(np.arange(-1, 7))
-ax.axes.set_aspect("equal")  # type: ignore
+# np.random.seed(2)
+# ax.set_xlim((-1.5, 7.1))
+# ax.set_ylim((-1.1, 5.9))
+# ax.set_xticks(np.arange(-1, 7))
+# ax.axes.set_aspect("equal")  # type: ignore
 
-with MetropolisHastings(num_samples=1000):
-    dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
-    x, y = list(zip(*dist.samples))
-    az_data = az.convert_to_inference_data(np.array([x, y]))
+# with MetropolisHastings(num_samples=1000):
+#     dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
+#     x, y = list(zip(*dist.samples))
+#     az_data = az.convert_to_inference_data(np.array([x, y]))
+#     print(az.summary(az_data))
+#     plt.scatter(x, y, color="black", s=7, zorder=2)
+#     plt.plot(x, y, color="gray", linewidth=1, zorder=1)
+#     plot_target(mean, cov)
+#     plt.savefig("2d_gaussian_mh.pdf", format="pdf")
+#     plt.show()
+
+
+## Test multiple chains for ESS and RHat
+
+with SimpleMetropolis(num_samples=1000, warmups=1000):
+    chains = []
+    for i in range(4):
+        dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
+        chains.append(dist.samples)
+    az_data = az.convert_to_inference_data(np.array(chains))
+    print("Simple Metropolis")
     print(az.summary(az_data))
-    plt.scatter(x, y, color="black", s=7, zorder=2)
-    plt.plot(x, y, color="gray", linewidth=1, zorder=1)
-    plot_target(mean, cov)
-    plt.savefig("2d_gaussian_mh.pdf", format="pdf")
-    plt.show()
+   
+
+with MetropolisHastings(num_samples=1000, warmups=1000):
+    chains = []
+    for i in range(4):
+        dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
+        chains.append(dist.samples)
+    az_data = az.convert_to_inference_data(np.array(chains))
+    print("Metropolis Hastings")
+    print(az.summary(az_data))
+   
