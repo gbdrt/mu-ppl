@@ -45,13 +45,13 @@ class Handler:
         return dist.sample()  # Draw sample
 
     def assume(self, cond: bool, name: Optional[str] = None):
-        assert False, "Not implemented"  # Ignore
+        pass  # Ignore
 
     def factor(self, weight: float, name: Optional[str] = None):
-        assert False, "Not implemented"  # Ignore
+        pass  # Ignore
 
     def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
-        assert False, "Not implemented"  # Ignore
+        pass  # Ignore
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
