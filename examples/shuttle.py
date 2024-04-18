@@ -41,7 +41,7 @@ def challenger(temps, fails):
     a = sample(Gaussian(0, 10), name="a")
     b = sample(Gaussian(0, 10), name="b")
     for i, (t, f) in enumerate(zip(logistic(a, b, temps), fails)):
-        observe(Bernoulli(t), f, name=f"o_{i}")
+        observe(Bernoulli(t), f)
     return logistic(a, b, 31)
 
 

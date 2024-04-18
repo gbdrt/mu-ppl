@@ -44,13 +44,13 @@ class Handler:
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # draw sample
 
-    def assume(self, cond: bool, name: Optional[str] = None):
+    def assume(self, cond: bool):
         pass  # ignore
 
-    def factor(self, weight: float, name: Optional[str] = None):
+    def factor(self, weight: float):
         pass  # ignore
 
-    def observe(self, dist: Distribution[T], value: T, name: Optional[str] = None):
+    def observe(self, dist: Distribution[T], value: T):
         pass  # ignore
 
     def infer(
@@ -81,7 +81,7 @@ def sample(dist: Distribution[T], name: Optional[str] = None) -> T:
     return _HANDLER.sample(dist, name=name)
 
 
-def assume(cond: bool, name: Optional[str] = None):
+def assume(cond: bool):
     """
     Reject execution which do not satisfy a boolean predicate
 
@@ -89,13 +89,11 @@ def assume(cond: bool, name: Optional[str] = None):
     ----------
     cond: bool
         Boolean condition
-    name: Optional[str]
-        Unique name (required by some inference)
     """
-    return _HANDLER.assume(cond, name=name)
+    return _HANDLER.assume(cond)
 
 
-def factor(weight: float, name: Optional[str] = None):
+def factor(weight: float):
     """
     Add a factor to the log probability of the model
 
@@ -103,13 +101,11 @@ def factor(weight: float, name: Optional[str] = None):
     ----------
     weight: float
         Value to be added
-    name: Optional[str]
-        Unique name (required by some inference)
     """
-    return _HANDLER.factor(weight, name=name)
+    return _HANDLER.factor(weight)
 
 
-def observe(dist: Distribution[T], value: T, name: Optional[str] = None):
+def observe(dist: Distribution[T], value: T):
     """
     Assume that a value `v` was sampled form a distribution `dist`.
 
@@ -119,10 +115,8 @@ def observe(dist: Distribution[T], value: T, name: Optional[str] = None):
         Assumed distribution
     value: T
         Observed value
-    name: Optional[str]
-        Unique name for the observation (required by some inference)
     """
-    return _HANDLER.observe(dist, value, name=name)
+    return _HANDLER.observe(dist, value)
 
 
 def infer(model: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Distribution[T]:
@@ -188,14 +182,14 @@ class Enumeration(Handler):
         self.score += np.log(w)  # update the score
         return v
 
-    def assume(self, cond: bool, name: Optional[str] = None):
+    def assume(self, cond: bool):
         if not cond:
             raise Reject
 
-    def factor(self, weight: float, name: Optional[str] = None):
+    def factor(self, weight: float):
         self.score += weight  # update the score
 
-    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
+    def observe(self, dist: Distribution[T], v: T):
         self.score += dist.log_prob(v)  # update the score
 
     def infer(
@@ -240,14 +234,14 @@ class ImportanceSampling(Handler):
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # draw sample
 
-    def assume(self, cond: bool, name: Optional[str] = None):
+    def assume(self, cond: bool):
         if not cond:
             self.score += -np.inf
 
-    def factor(self, weight: float, name: Optional[str] = None):
+    def factor(self, weight: float):
         self.score += weight  # update the score
 
-    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
+    def observe(self, dist: Distribution[T], v: T):
         self.score += dist.log_prob(v)  # update the score
 
     def infer(
@@ -260,7 +254,7 @@ class ImportanceSampling(Handler):
         return Categorical(samples)
 
 
-class RejectionSampling(Handler):
+class RejectionSampling(ImportanceSampling):
     """
     Rejection sampling.
     Tries to generate `num_samples` valid samples.
@@ -280,19 +274,6 @@ class RejectionSampling(Handler):
         self.max_score: float = max_score
         self.score: float = 0
 
-    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # draw sample
-
-    def assume(self, cond: bool, name: Optional[str] = None):
-        if not cond:
-            self.score += -np.inf
-
-    def factor(self, weight: float, name: Optional[str] = None):
-        self.score += weight
-
-    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.score += dist.log_prob(v)
-
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
@@ -310,7 +291,7 @@ class RejectionSampling(Handler):
         return Empirical(samples)
 
 
-class SimpleMetropolis(Handler):
+class SimpleMetropolis(ImportanceSampling):
     """
     Multi-Sites Markov Chain Monte Carlo (MCMC).
     Try to generate `num_samples` valid samples.
@@ -336,19 +317,6 @@ class SimpleMetropolis(Handler):
         self.thinning = thinning
         self.score: float = 0  # current score
 
-    def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
-        return dist.sample()  # draw sample
-
-    def assume(self, cond: bool, name: Optional[str] = None):
-        if not cond:
-            self.score += -np.inf
-
-    def factor(self, weight: float, name: Optional[str] = None):
-        self.score += weight  # update the score
-
-    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        self.score += dist.log_prob(v)  # update the score
-
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
     ) -> Empirical[T]:
@@ -356,21 +324,21 @@ class SimpleMetropolis(Handler):
         new_value = model(*args, **kwargs)  # generate first sample
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            old_score = self.score  # store current state
+            old_score = self.score  # store state
             old_value = new_value  # store current value
             self.score = 0  # reset the score
             new_value = model(*args, **kwargs)  # generate a candidate
             alpha = np.exp(self.score - old_score)
             u = np.random.random()
             if not (u < alpha):
-                new_value = old_value  # roll back to the previous value
-                self.score = old_score  # restore previous state
-            samples.append(new_value)  # keep the new trace and the new value
+                self.score = old_score  # rollback
+                new_value = old_value
+            samples.append(new_value)
 
         return Empirical(samples[self.warmups :: self.thinning])
 
 
-class MetropolisHastings(Handler):
+class MetropolisHastings(ImportanceSampling):
     """
     Single-Site Markov Chain Monte Carlo (MCMC).
     Try to generate `num_samples` valid samples.
@@ -397,8 +365,9 @@ class MetropolisHastings(Handler):
         self.warmups = warmups
         self.thinning = thinning
 
+        self.score: float = 0
         self.samples: Dict[str, Any] = {}  # samples store
-        self.scores: Dict[str, float] = {}  # score store
+        self.x_scores: Dict[str, float] = {}  # X scores
         self.cache: Dict[str, Any] = {}  # sample cache to be reused
 
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
@@ -408,33 +377,16 @@ class MetropolisHastings(Handler):
         except KeyError:
             v = dist.sample()  # otherwise draw a sample
         self.samples[name] = v  # store the sample
-        self.scores[name] = dist.log_prob(v)
+        self.x_scores[name] = dist.log_prob(v)
         return v
 
-    def assume(self, cond: bool, name: Optional[str] = None):
-        assert name, "MCMC inference requires naming assume sites"
-        if not cond:
-            self.scores[name] = -np.inf
-
-    def factor(self, weight: float, name: Optional[str] = None):
-        assert name, "MCMC inference requires naming score sites"
-        self.scores[name] = weight  # update the score
-
-    def observe(self, dist: Distribution[T], v: T, name: Optional[str] = None):
-        assert name, "MCMC inference requires naming observe sites"
-        self.scores[name] = dist.log_prob(v)  # update the score
-
-    def mh(
-        self, regen: str, old_samples: Dict[str, Any], old_scores: Dict[str, float]
-    ) -> float:
-        # MH acceptance
-        x_new = {regen} | (self.samples.keys() - old_samples.keys())
-        x_old = {regen} | (old_samples.keys() - self.samples.keys())
-        alpha = np.log(len(old_samples)) - np.log(len(self.samples))
-        for v in self.scores.keys() - x_new:
-            alpha += self.scores[v]
-        for v in old_scores.keys() - x_old:
-            alpha -= old_scores[v]
+    def mh(self, cache, p_state) -> float:
+        p_score, _, p_x_scores = p_state
+        alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
+        alpha += self.score - p_score
+        for v in cache:
+            alpha += self.x_scores[v]
+            alpha -= p_x_scores[v]
         return np.exp(alpha)
 
     def infer(
@@ -444,21 +396,18 @@ class MetropolisHastings(Handler):
         new_value = model(*args, **kwargs)  # generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            p_samples, p_scores = self.samples, self.scores  # store current state
+            p_state = self.score, self.samples, self.x_scores  # store state
             p_value = new_value  # store current value
             regen = np.random.choice([n for n in self.samples])
             self.cache = deepcopy(self.samples)  # use samples as next cache
             del self.cache[regen]  # force regen to be resampled
-            self.samples, self.scores = {}, {}  # reset the state
+            self.score, self.samples, self.x_scores = 0, {}, {}  # reset the state
             new_value = model(*args, **kwargs)  # regen a new trace from regen_from
-            alpha = self.mh(regen, p_samples, p_scores)
+            alpha = self.mh(self.cache, p_state)
             u = np.random.random()
             if not (u < alpha):
-                new_value = p_value  # roll back to the previous value
-                self.samples, self.scores = (
-                    p_samples,
-                    p_scores,
-                )  # restore previous state
+                self.score, self.samples, self.scores = p_state  # rollback
+                new_value = p_value
             samples.append(new_value)
 
         return Empirical(samples[self.warmups :: self.thinning])

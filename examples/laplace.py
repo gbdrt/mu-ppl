@@ -22,8 +22,8 @@ fl, gl = 698958, 737629  # Londres  1664 - 1758
 def laplace(f1, g1, f2, g2) -> float:
     p = sample(Uniform(0, 1), name="p")
     q = sample(Uniform(0, 1), name="q")
-    observe(Binomial(f1 + g1, p), g1, name="f1")
-    observe(Binomial(f2 + g2, q), g2, name="f2")
+    observe(Binomial(f1 + g1, p), g1)
+    observe(Binomial(f2 + g2, q), g2)
     return q > p
 
 

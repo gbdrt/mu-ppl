@@ -11,7 +11,7 @@ class HMM(SSM):
     def step(self, y: float) -> float:
         self.cpt += 1
         self.x = sample(Gaussian(self.x, 2), name=f"x_{self.cpt}")
-        observe(Gaussian(self.x, 0.5), y, name=f"o_{self.cpt}")
+        observe(Gaussian(self.x, 0.5), y)
         return self.x
 
 
