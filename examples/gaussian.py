@@ -51,7 +51,26 @@ ax.tick_params(left=False, bottom=False)
 ax.axhline(0, color="black", linewidth=1.5)
 ax.axvline(0, color="black", linewidth=1.5)
 
-## Plot random walks
+
+# Importance Sampling
+
+ax.set_xlim((-1.5, 7.2))
+ax.set_ylim((-1.2, 5.9))
+ax.set_xticks(np.arange(-1, 8))
+ax.axes.set_aspect("equal")  # type: ignore
+
+np.random.seed(23)
+with ImportanceSampling(num_particles=10000):
+    dist: Categorical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
+    x, y = list(zip(*dist.values))
+    w = dist.probs
+    plt.scatter(x, y, c=w**0.05, cmap='Reds', s=7)
+    plot_target(mean, cov)
+    plt.savefig('2d_gaussian_importance.pdf', format='pdf')
+    plt.show()
+
+
+# # Plot random walks
 
 # ax.set_xlim((-1.5, 7.2))
 # ax.set_ylim((-1.2, 5.9))
@@ -70,22 +89,22 @@ ax.axvline(0, color="black", linewidth=1.5)
 #     plt.savefig('2d_gaussian_simple_mh.pdf', format='pdf')
 #     plt.show()
 
-np.random.seed(2)
-ax.set_xlim((-1.5, 7.2))
-ax.set_ylim((-1.2, 5.9))
-ax.set_xticks(np.arange(-1, 8))
-ax.axes.set_aspect("equal")  # type: ignore
+# np.random.seed(2)
+# ax.set_xlim((-1.5, 7.2))
+# ax.set_ylim((-1.2, 5.9))
+# ax.set_xticks(np.arange(-1, 8))
+# ax.axes.set_aspect("equal")  # type: ignore
 
-with MetropolisHastings(num_samples=1000):
-    dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
-    x, y = list(zip(*dist.samples))
-    az_data = az.convert_to_inference_data(np.array([x, y]))
-    print(az.summary(az_data))
-    plt.scatter(x, y, color="black", s=7, zorder=2)
-    plt.plot(x, y, color="gray", linewidth=1, zorder=1)
-    plot_target(mean, cov)
-    plt.savefig("2d_gaussian_mh.pdf", format="pdf")
-    plt.show()
+# with MetropolisHastings(num_samples=1000):
+#     dist: Empirical[Tuple[float, float]] = infer(gauss, obs)  # type: ignore
+#     x, y = list(zip(*dist.samples))
+#     az_data = az.convert_to_inference_data(np.array([x, y]))
+#     print(az.summary(az_data))
+#     plt.scatter(x, y, color="black", s=7, zorder=2)
+#     plt.plot(x, y, color="gray", linewidth=1, zorder=1)
+#     plot_target(mean, cov)
+#     plt.savefig("2d_gaussian_mh.pdf", format="pdf")
+#     plt.show()
 
 
 # ## Test multiple chains for ESS and RHat
