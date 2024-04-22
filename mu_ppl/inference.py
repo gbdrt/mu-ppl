@@ -366,7 +366,7 @@ class MetropolisHastings(ImportanceSampling):
         self.thinning = thinning
 
         self.score: float = 0
-        self.samples: Dict[str, Any] = {}  # samples store
+        self.x_samples: Dict[str, Any] = {}  # samples store
         self.x_scores: Dict[str, float] = {}  # X scores
         self.cache: Dict[str, Any] = {}  # sample cache to be reused
 
@@ -376,17 +376,17 @@ class MetropolisHastings(ImportanceSampling):
             v = self.cache[name]
         except KeyError:
             v = dist.sample()  # otherwise draw a sample
-        self.samples[name] = v  # store the sample
+        self.x_samples[name] = v  # store the sample
         self.x_scores[name] = dist.log_prob(v)
         return v
 
-    def mh(self, cache, p_state) -> float:
+    def mh(self, p_state) -> float:
         p_score, _, p_x_scores = p_state
         alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
         alpha += self.score - p_score
-        for v in cache:
-            alpha += self.x_scores[v]
-            alpha -= p_x_scores[v]
+        for x in self.cache:
+            alpha += self.x_scores[x]
+            alpha -= p_x_scores[x]
         return np.exp(alpha)
 
     def infer(
@@ -396,17 +396,17 @@ class MetropolisHastings(ImportanceSampling):
         new_value = model(*args, **kwargs)  # generate first trace
 
         for _ in tqdm(range(self.warmups + self.num_samples * self.thinning)):
-            p_state = self.score, self.samples, self.x_scores  # store state
+            p_state = self.score, self.x_samples, self.x_scores  # store state
             p_value = new_value  # store current value
-            regen = np.random.choice([n for n in self.samples])
-            self.cache = deepcopy(self.samples)  # use samples as next cache
+            regen = np.random.choice([n for n in self.x_samples])
+            self.cache = deepcopy(self.x_samples)  # use samples as next cache
             del self.cache[regen]  # force regen to be resampled
-            self.score, self.samples, self.x_scores = 0, {}, {}  # reset the state
+            self.score, self.x_samples, self.x_scores = 0, {}, {}  # reset the state
             new_value = model(*args, **kwargs)  # regen a new trace from regen_from
-            alpha = self.mh(self.cache, p_state)
+            alpha = self.mh(p_state)
             u = np.random.random()
             if not (u < alpha):
-                self.score, self.samples, self.scores = p_state  # rollback
+                self.score, self.x_samples, self.scores = p_state  # rollback
                 new_value = p_value
             samples.append(new_value)
 
