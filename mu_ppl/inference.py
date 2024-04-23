@@ -44,7 +44,7 @@ class Handler:
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # draw sample
 
-    def assume(self, cond: bool):
+    def assume(self, p: bool):
         pass  # ignore
 
     def factor(self, weight: float):
@@ -81,16 +81,16 @@ def sample(dist: Distribution[T], name: Optional[str] = None) -> T:
     return _HANDLER.sample(dist, name=name)
 
 
-def assume(cond: bool):
+def assume(p: bool):
     """
     Reject execution which do not satisfy a boolean predicate
 
     Parameters
     ----------
-    cond: bool
+    p: bool
         Boolean condition
     """
-    return _HANDLER.assume(cond)
+    return _HANDLER.assume(p)
 
 
 def factor(weight: float):
@@ -182,8 +182,8 @@ class Enumeration(Handler):
         self.score += np.log(w)  # update the score
         return v
 
-    def assume(self, cond: bool):
-        if not cond:
+    def assume(self, p: bool):
+        if not p:
             raise Reject
 
     def factor(self, weight: float):
@@ -234,8 +234,8 @@ class ImportanceSampling(Handler):
     def sample(self, dist: Distribution[T], name: Optional[str] = None) -> T:
         return dist.sample()  # draw sample
 
-    def assume(self, cond: bool):
-        if not cond:
+    def assume(self, p: bool):
+        if not p:
             self.score += -np.inf
 
     def factor(self, weight: float):

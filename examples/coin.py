@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def coin(obs: List[int]) -> float:
     p = sample(Uniform(0, 1), name="p")
-    for i, o in enumerate(obs):
+    for o in obs:
         observe(Bernoulli(p), o)
     return p
 

@@ -51,7 +51,6 @@ ax.tick_params(left=False, bottom=False)
 ax.axhline(0, color="black", linewidth=1.5)
 ax.axvline(0, color="black", linewidth=1.5)
 
-
 # Importance Sampling
 
 ax.set_xlim((-1.5, 7.2))
