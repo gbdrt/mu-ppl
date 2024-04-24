@@ -283,8 +283,9 @@ class RejectionSampling(ImportanceSampling):
             while True:
                 self.score = 0  # reset the score
                 value = model(*args, **kwargs)
+                alpha = np.exp(min(0, self.score - self.max_score))
                 u = np.random.random()
-                if u <= np.exp(self.score - self.max_score):
+                if u <= alpha:
                     return value  # accept
 
         samples = [gen() for _ in tqdm(range(self.num_samples))]
@@ -328,7 +329,7 @@ class SimpleMetropolis(ImportanceSampling):
             old_value = new_value  # store current value
             self.score = 0  # reset the score
             new_value = model(*args, **kwargs)  # generate a candidate
-            alpha = np.exp(self.score - old_score)
+            alpha = np.exp(min(0, self.score - old_score))
             u = np.random.random()
             if not (u < alpha):
                 self.score = old_score  # rollback
@@ -381,13 +382,15 @@ class MetropolisHastings(ImportanceSampling):
         return v
 
     def mh(self, p_state) -> float:
+        if np.isinf(self.score):
+            return 0.
         p_score, _, p_x_scores = p_state
-        alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
-        alpha += self.score - p_score
+        l_alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
+        l_alpha += self.score - p_score
         for x in self.cache:
-            alpha += self.x_scores[x]
-            alpha -= p_x_scores[x]
-        return np.exp(alpha)
+            l_alpha += self.x_scores[x]
+            l_alpha -= p_x_scores[x]
+        return np.exp(min(0., l_alpha))
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
