@@ -39,3 +39,12 @@ You should get the following output:
 ```
 
 More examples are available in the `examples` directory.
+
+## Notebooks
+
+- [Introduction](./notebooks/1-introduction.ipynb) <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/1-introduction.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+- [Bayesian Reasoning](./notebooks/2-bayesian-reasoning.ipynb) <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/2-bayesian-reasoning.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
