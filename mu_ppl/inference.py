@@ -383,14 +383,14 @@ class MetropolisHastings(ImportanceSampling):
 
     def mh(self, p_state) -> float:
         if np.isinf(self.score):
-            return 0.
+            return 0.0
         p_score, _, p_x_scores = p_state
         l_alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
         l_alpha += self.score - p_score
         for x in self.cache:
             l_alpha += self.x_scores[x]
             l_alpha -= p_x_scores[x]
-        return np.exp(min(0., l_alpha))
+        return np.exp(min(0.0, l_alpha))
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
