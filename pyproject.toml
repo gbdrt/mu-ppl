@@ -7,11 +7,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-scipy = "^1.12.0"
-numpy = "^1.26.4"
+scipy = "^1.11.4"
+numpy = "^1.25.2"
 tqdm = "^4.66.2"
-seaborn = "^0.13.2"
-matplotlib = "^3.8.3"
+seaborn = "^0.13.1"
+matplotlib = "^3.7.1"
 
 
 [build-system]
