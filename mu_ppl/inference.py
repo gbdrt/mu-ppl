@@ -137,7 +137,7 @@ def infer(model: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Distribut
     Distribution[T]
         The posterior distribution
     """
-    return _HANDLER.infer(model, *args)
+    return _HANDLER.infer(model, *args, **kwargs)
 
 
 class Reject(Exception):
@@ -153,7 +153,7 @@ class Enumeration(Handler):
     The DFS algorithm requires all sample site to have a unique name.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.stack: List[Dict[str, Any]] = []
         self.trace: Dict[str, Any] = {}
         self.score: float = 0
@@ -189,8 +189,8 @@ class Enumeration(Handler):
     def factor(self, weight: float):
         self.score += weight  # update the score
 
-    def observe(self, dist: Distribution[T], v: T):
-        self.score += dist.log_prob(v)  # update the score
+    def observe(self, dist: Distribution[T], value: T):
+        self.score += dist.log_prob(value)  # update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
@@ -221,7 +221,7 @@ class ImportanceSampling(Handler):
     All results are gathered into a Categorical distribution.
     """
 
-    def __init__(self, num_particles: int = 1000):
+    def __init__(self, num_particles: int = 1000) -> None:
         """
         Parameters
         ----------
@@ -241,8 +241,8 @@ class ImportanceSampling(Handler):
     def factor(self, weight: float):
         self.score += weight  # update the score
 
-    def observe(self, dist: Distribution[T], v: T):
-        self.score += dist.log_prob(v)  # update the score
+    def observe(self, dist: Distribution[T], value: T):
+        self.score += dist.log_prob(value)  # update the score
 
     def infer(
         self, model: Callable[P, T], *args: P.args, **kwargs: P.kwargs
@@ -261,7 +261,7 @@ class RejectionSampling(ImportanceSampling):
     If an `assume` raises the `Reject` exception, the inference loops to generate a new sample.
     """
 
-    def __init__(self, num_samples: int = 1000, max_score: float = 0):
+    def __init__(self, num_samples: int = 1000, max_score: float = 0) -> None:
         """
         Parameters
         ----------
@@ -302,7 +302,9 @@ class SimpleMetropolis(ImportanceSampling):
     - Accept or reject with Metropolis-Hasting
     """
 
-    def __init__(self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1):
+    def __init__(
+        self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1
+    ) -> None:
         """
         Parameters
         ----------
@@ -351,7 +353,9 @@ class MetropolisHastings(ImportanceSampling):
     - Accept or reject with Metropolis-Hasting
     """
 
-    def __init__(self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1):
+    def __init__(
+        self, num_samples: int = 1000, warmups: int = 0, thinning: int = 1
+    ) -> None:
         """
         Parameters
         ----------

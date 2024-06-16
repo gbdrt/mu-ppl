@@ -105,8 +105,8 @@ class Categorical(Distribution[T]):
         i = np.searchsorted(np.cumsum(self.probs), u)
         return self.values[i]
 
-    def log_prob(self, v: T) -> float:
-        i = self.values.index(v)
+    def log_prob(self, x: T) -> float:
+        i = self.values.index(x)
         return np.log(self.probs[i])
 
     def stats(self) -> Tuple[float, float]:
@@ -134,8 +134,8 @@ class Empirical(Categorical[T]):
         i = rand.randint(len(self.samples))
         return self.samples[i]
 
-    def log_prob(self, v: T) -> float:
-        return 1 / len(self.samples) if v in self.samples else 0
+    def log_prob(self, x: T) -> float:
+        return 1 / len(self.samples) if x in self.samples else 0
 
     def stats(self) -> Tuple[float, float]:
         samples = np.array(self.samples)
