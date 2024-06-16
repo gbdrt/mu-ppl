@@ -9,11 +9,10 @@ from .inference import (
     ImportanceSampling,
     SimpleMetropolis,
     MetropolisHastings,
-    SSM,
-    SMC,
 )
 
 from .distributions import (
+    Distribution,
     Categorical,
     Empirical,
     Dirac,
