@@ -46,3 +46,7 @@ The following introductory notebooks can be run locally or in Google Colab.
 
 - <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/1-introduction.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Introduction](./notebooks/1-introduction.ipynb) 
 - <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/2-bayesian-reasoning.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Bayesian Reasoning](./notebooks/2-bayesian-reasoning.ipynb) 
+
+## EJCIM 2024
+
+- <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/ejcim24-smc.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Introduction to Sequential Monte Carlo methods (SMC)](./notebooks/ejcim24-smc.ipynb) 
