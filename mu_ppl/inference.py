@@ -391,7 +391,7 @@ class MetropolisHastings(ImportanceSampling):
         p_score, _, p_x_scores = p_state
         l_alpha = np.log(len(p_x_scores)) - np.log(len(self.x_scores))
         l_alpha += self.score - p_score
-        for x in self.cache:
+        for x in self.cache.keys() & self.x_scores.keys():
             l_alpha += self.x_scores[x]
             l_alpha -= p_x_scores[x]
         return np.exp(min(0.0, l_alpha))
