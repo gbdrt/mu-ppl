@@ -2,16 +2,27 @@ from mu_ppl import *
 import matplotlib.pyplot as plt
 
 
-def dice() -> int:
+def sum_dice() -> int:
     a = sample(RandInt(1, 6), name="a")
     b = sample(RandInt(1, 6), name="b")
-    # assume (a != b)
-    factor(1 if a != b else 0.5)
     return a + b
 
 
 with Enumeration():
-    dist: Categorical[float] = infer(dice)  # type: ignore
+    dist: Categorical[float] = infer(sum_dice)  # type: ignore
     print(dist.stats())
     viz(dist)
+    plt.show()
+
+def hard_dice() -> int:
+    a = sample(RandInt(1, 6), name="a")
+    b = sample(RandInt(1, 6), name="b")
+    assume(a!=b)
+    return a + b
+
+
+with Enumeration():
+    dist2: Categorical[float] = infer(hard_dice)  # type: ignore
+    print(dist2.stats())
+    viz(dist2)
     plt.show()
