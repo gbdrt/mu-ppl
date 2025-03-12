@@ -325,8 +325,7 @@ class Gaussian(Distribution[float]):
         return stats.norm.stats(loc=self.mu, scale=self.sigma)
 
 
-from pdl.pdl import exec_file
-import pathlib
+from pdl.pdl import parse_str, exec_program
 
 
 class PDL(Distribution[Any]):
@@ -334,17 +333,17 @@ class PDL(Distribution[Any]):
     Use a PDL program as a sampler.
     """
 
-    def __init__(self, filename: str):
+    def __init__(self, prog: str):
         """
         Parameters
         ----------
         filename: pdl file
         """
-        self.path = pathlib.Path(filename)
-        assert self.path.exists()
+        self.prog = prog
+        self.parsed_prog, _ = parse_str(prog)
 
     def sample(self) -> Any:
-        return exec_file(self.path.absolute())
+        return exec_program(self.parsed_prog)
 
     def log_prob(self, x: float) -> float:
         return 0.0  # TODO: use logprob from the LLM?
