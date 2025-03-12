@@ -21,6 +21,7 @@ from .distributions import (
     RandInt,
     Uniform,
     Gaussian,
+    PDL,
     split,
     viz,
 )

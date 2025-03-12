@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, Tuple, ParamSpec
+from typing import TypeVar, Generic, List, Tuple, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -323,6 +323,34 @@ class Gaussian(Distribution[float]):
 
     def stats(self) -> Tuple[float, float]:
         return stats.norm.stats(loc=self.mu, scale=self.sigma)
+
+
+from pdl.pdl import exec_file
+import pathlib
+
+
+class PDL(Distribution[Any]):
+    """
+    Use a PDL program as a sampler.
+    """
+
+    def __init__(self, filename: str):
+        """
+        Parameters
+        ----------
+        filename: pdl file
+        """
+        self.path = pathlib.Path(filename)
+        assert self.path.exists()
+
+    def sample(self) -> Any:
+        return exec_file(self.path.absolute())
+
+    def log_prob(self, x: float) -> float:
+        return 0.0  # TODO: use logprob from the LLM?
+
+    def stats(self) -> Tuple[float, float]:
+        raise RuntimeError("stats not defined for PDL")
 
 
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
