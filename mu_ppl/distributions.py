@@ -363,6 +363,13 @@ def viz(dist: Distribution[float], **kwargs):
             if len(dist.values) < 100:
                 sns.barplot(x=dist.values, y=dist.probs, errorbar=None, **kwargs)
             else:
-                plt.plot(dist.values, dist.probs, marker=".", linestyle="", **kwargs)
+                sns.histplot(
+                    x=dist.values,
+                    weights=dist.probs,
+                    bins=50,
+                    kde=True,
+                    stat="probability",
+                    **kwargs,
+                )
         case _:
             assert False, f"No viz available for {dist}"
