@@ -352,6 +352,30 @@ class PDL(Distribution[Any]):
         raise RuntimeError("stats not defined for PDL")
 
 
+from pdl.pdl_interpreter import process_call_model
+
+
+class PDL_model(Distribution[Any]):
+    """
+    Call an LLM via PDL
+    """
+
+    def __init__(self, state, scope, block, loc):
+        self.state = state
+        self.scope = scope
+        self.block = block
+        self.loc = loc
+
+    def sample(self) -> Any:
+        return process_call_model(self.state, self.scope, self.block, self.loc)
+
+    def log_prob(self, x: Any) -> float:
+        raise RuntimeError("log_prob not defined for PDL_model")
+
+    def stats(self) -> Tuple[float, float]:
+        raise RuntimeError("stats not defined for PDL_model")
+
+
 def split(dist: Distribution[List[T]]) -> List[Distribution[T]]:
     """
     Split a list of distribution over list into the list of marginal distributions.
