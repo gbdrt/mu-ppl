@@ -22,6 +22,7 @@ from .distributions import (
     Uniform,
     Gaussian,
     PDL,
+    PDL_model,
     split,
     viz,
 )
