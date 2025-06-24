@@ -51,4 +51,8 @@ The following introductory notebooks can be run locally or in Google Colab.
 
 - <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/ejcim24-ppl.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [An introduction to probabilistic programming with mu-PPL](./notebooks/ejcim24-ppl.ipynb) 
 
-- <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/ejcim24-smc.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Introduction to Sequential Monte Carlo methods (SMC)](./notebooks/ejcim24-smc.ipynb) 
+- <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/ejcim24-smc.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Introduction to Sequential Monte Carlo methods (SMC)](./notebooks/ejcim24-smc.ipynb)
+
+## LICS 2025
+
+- <a target="_blank" href="https://colab.research.google.com/github/gbdrt/mu-ppl/blob/main/notebooks/lics25-ppl.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> [Tutorial on Linear Logic and Probabilistic Programming](./notebooks/lics2025-ppl.ipynb) 
