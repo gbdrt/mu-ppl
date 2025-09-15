@@ -1,19 +1,20 @@
-[tool.poetry]
+[project]
 name = "mu-ppl"
 version = "0.1.0"
 description = ""
-authors = ["Guillaume Baudart <guillaume.baudart@inria.fr>"]
+authors = [{name = "Guillaume Baudart", email = "guillaume.baudart@inria.fr"}]
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "scipy>=1.11.4",
+    "numpy>=1.25.2",
+    "tqdm>=4.66.2",
+    "seaborn>=0.13.1",
+    "matplotlib>=3.7.1"
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-scipy = "^1.11.4"
-numpy = "^1.25.2"
-tqdm = "^4.66.2"
-seaborn = "^0.13.1"
-matplotlib = "^3.7.1"
+[tool.setuptools.packages.find]
+include = ["mu_ppl"]
 
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = true
