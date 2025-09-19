@@ -258,7 +258,10 @@ class RejectionSampling(ImportanceSampling):
     """
     Rejection sampling.
     Tries to generate `num_samples` valid samples.
-    If an `assume` raises the `Reject` exception, the inference loops to generate a new sample.
+    For each sample:
+    - Run the program to get a sample and a score w
+    - Accept or reject the sample with probability w / wmax (score max)
+    - If reject, retry.
     """
 
     def __init__(self, num_samples: int = 1000, max_score: float = 0) -> None:
