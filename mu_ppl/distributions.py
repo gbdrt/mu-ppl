@@ -115,6 +115,12 @@ class Categorical(Distribution[T]):
         std = np.sqrt(np.cov(values, aweights=self.probs)).item()
         return (mean, std)
 
+    def sort(self):
+        sorted_indices = np.argsort(self.logits)[::-1]
+        self.values = [self.values[i] for i in sorted_indices]
+        self.logits = np.array(self.logits)[sorted_indices]
+        self.probs = np.array(self.probs)[sorted_indices]
+
 
 class Empirical(Categorical[T]):
     """
