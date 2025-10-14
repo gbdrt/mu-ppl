@@ -256,7 +256,7 @@ class RandInt(Categorical[int]):
         self.b = b
 
     def sample(self) -> int:
-        return rand.randint(self.a, self.b)
+        return rand.randint(self.a, self.b + 1)
 
     def log_prob(self, v: int) -> float:
         if self.a <= v <= self.b:
