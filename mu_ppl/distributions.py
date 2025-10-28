@@ -97,7 +97,7 @@ class Categorical(Distribution[T]):
         List[Tuple[T, float]]
             A list of pairs (value, proba)
         """
-        self.shrink
+        self.shrink()
         return list(zip(self.values, self.probs))
 
     def sample(self) -> T:
