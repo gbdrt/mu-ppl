@@ -73,6 +73,7 @@ class Categorical(Distribution[T]):
         self.values, self.logits = zip(*pairs)
         lse = logsumexp(self.logits)
         self.probs = np.exp(self.logits - lse)
+        self.shrink()
 
     def shrink(self):
         """
@@ -97,7 +98,6 @@ class Categorical(Distribution[T]):
         List[Tuple[T, float]]
             A list of pairs (value, proba)
         """
-        self.shrink()
         return list(zip(self.values, self.probs))
 
     def sample(self) -> T:
@@ -226,6 +226,9 @@ class Binomial(Distribution[int]):
         assert 0 <= p <= 1
         self.n = n
         self.p = p
+
+    def support(self) -> List[Tuple[int, float]]:
+        return [(i, self.log_prob(i)) for i in range(self.n + 1)]
 
     def sample(self) -> int:
         return rand.binomial(self.n, self.p)
@@ -365,7 +368,6 @@ def viz(dist: Distribution[float], **kwargs):
         case Empirical():
             sns.histplot(dist.samples, kde=True, stat="probability", **kwargs)
         case Categorical():
-            dist.shrink()
             if len(dist.values) < 100:
                 sns.barplot(x=dist.values, y=dist.probs, errorbar=None, **kwargs)
             else:
