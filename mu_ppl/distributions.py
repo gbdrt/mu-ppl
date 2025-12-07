@@ -73,7 +73,10 @@ class Categorical(Distribution[T]):
         self.values, self.logits = zip(*pairs)
         lse = logsumexp(self.logits)
         self.probs = np.exp(self.logits - lse)
-        self.shrink()
+        try:
+            self.shrink()
+        except TypeError:
+            pass
 
     def shrink(self):
         """
